@@ -56,3 +56,7 @@ ChatGPT Ads API: <https://developers.openai.com/ads>
 3.  `php artisan serve`, then open <http://127.0.0.1:8000>.
 4.  `php artisan test` runs the tests.
 
+---
+
+Planned and specified with [OpenSpec](https://openspec.dev); the change proposal, specs, design and tasks live under `openspec/changes/add-industry-dashboard-mvp/`. Every project decision is logged in [PLANNING_LOG.md](PLANNING_LOG.md).
+
