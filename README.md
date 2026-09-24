@@ -58,5 +58,7 @@ ChatGPT Ads API: <https://developers.openai.com/ads>
 
 ---
 
+This project follows the course guidelines at [esst-prog2.github.io](https://esst-prog2.github.io).
+
 Planned and specified with [OpenSpec](https://openspec.dev); the change proposal, specs, design and tasks live under `openspec/changes/add-industry-dashboard-mvp/`. Every project decision is logged in [PLANNING_LOG.md](PLANNING_LOG.md).
 
