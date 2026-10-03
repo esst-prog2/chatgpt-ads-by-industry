@@ -56,13 +56,15 @@ ChatGPT Ads API: <https://developers.openai.com/ads>
 3.  `php artisan serve`, then open <http://127.0.0.1:8000>.
 4.  `php artisan test` runs the tests.
 
-## 7. HW4 spike: does one campaign swing more than industries differ?
+## 7. Data Architecture & MVP Validation (HW4 Spike)
 
-On branch `hw4-spike`, a spike checks an assumption behind the synthetic-data placeholder: is one real campaign's week-over-week variance big enough to explain away the differences the dashboard shows *between* industries? If so, those between-industry differences would be unconvincing until more real accounts are onboarded.
+**Architecture.** The MVP's data layer (`App\Data\PerformanceSource`) has two implementations: one real ChatGPT Ads account (`RealAdsSource`, exactly one API key, mapped to Education & Careers) and a deterministic synthetic dataset (`SyntheticSource`) covering the other accounts and industries. This is an intentional placeholder, not the end state: it lets the dashboard's cross-industry features - the box plot, the metric selector, the drill-down - be built and demonstrated now, against realistic-shaped data, without waiting on multiple real client accounts to be onboarded.
 
-**Method:** `scripts/spike_ctr_cpc.php` takes the real campaign's earliest 14 days of delivery data (fixed, for reproducibility - see PLANNING_LOG.md), splits them into two disjoint 7-day windows, and computes weighted CTR (`sum(clicks)/sum(impressions)`) and CPC (`sum(spend)/sum(clicks)`) for each. It compares the week-over-week swing to the between-industry median gap (`(max - min) / min * 100`) computed from the same per-campaign values the box plot uses. The window-splitting and metric logic live in `app/Services/SpikeAnalyzer.php`, unit tested in `tests/Feature/SpikeCalculationTest.php`. Run it with `php scripts/spike_ctr_cpc.php`.
+**Spike question.** On branch `hw4-spike`, a spike checks an assumption behind that placeholder: is the one real campaign's own week-over-week variance big enough to explain away the differences the dashboard shows *between* industries? If a single campaign's normal noise is as large as the gaps between industry medians, those between-industry comparisons would not be meaningful yet.
 
-**Result** (exact output of the script above, reproduced 2026-10-03):
+**Method:** `scripts/spike_ctr_cpc.php` takes the real campaign's earliest 14 days of delivery data (fixed, for reproducibility - see PLANNING_LOG.md), splits them into two disjoint 7-day windows, and computes weighted CTR (`sum(clicks)/sum(impressions)`) and CPC (`sum(spend)/sum(clicks)`) for each. It compares the week-over-week swing to the between-industry median gap (`(max - min) / min * 100`) computed from the same per-campaign values the box plot uses. The window-splitting and metric logic live in `app/Services/SpikeAnalyzer.php`, unit tested in `tests/Feature/SpikeCalculationTest.php` (36/36 passing). Run it with `php scripts/spike_ctr_cpc.php`, or `php "scripts/manual test/test_spike_manual.php"` for the same check with Hungarian-language CLI output.
+
+**Measured result** (exact script output, reproduced 2026-10-03):
 
 ```
 Week 1 (2026-09-08 to 2026-09-15): CTR = 0.79%, CPC = 390 HUF
@@ -76,7 +78,9 @@ CPC medians by industry: Education & Careers=338 HUF  Retail & eCommerce=201 HUF
 CPC gap (max vs min median): +344.28%
 ```
 
-The real campaign's week-over-week swing (CTR +55.7%, CPC -39.8%) is smaller than the between-industry median gap for both metrics (CTR 143.0%, CPC 344.3%), so single-campaign variance does not overlap with the dashboard's between-industry baselines on this data.
+The real campaign's week-over-week swing (CTR +55.67%, CPC -39.78%) is **smaller** than the between-industry median gap for both metrics (CTR 143.01%, CPC 344.28%). By the spike's own success criterion, that means this measurement does **not** show single-campaign noise explaining away the between-industry differences.
+
+**Limitation.** This result is reassuring, not conclusive. It comes from exactly one real account, in one industry, over one specific pair of weeks - not enough to rule out that a different two-week window, a different campaign, or a different industry's real account would swing differently. Until more real accounts are onboarded across more industries, the dashboard's cross-industry comparisons should be read as a demonstration of the architecture and UI, not yet as a validated claim about real-world cross-industry performance differences.
 
 ---
 
