@@ -6,9 +6,45 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
+/**
+ * One real ChatGPT Ads account. Each Ads API key is scoped to a single
+ * account, so a second real account is a second instance of this class with
+ * its own id, key and display label - see AppServiceProvider, which builds
+ * one instance per configured key in config('ads.accounts').
+ */
 final class RealAdsSource implements PerformanceSource
 {
-    public const ACCOUNT_ID = 'real-account';
+    public function __construct(
+        private readonly string $accountId,
+        private readonly string $apiKey,
+        private readonly string $displayLabel,
+    ) {}
+
+    /**
+     * Builds one RealAdsSource per configured account that actually has an API
+     * key set (config('ads.accounts')); an account slot with no key - e.g. a
+     * second real account not yet onboarded - is skipped, not constructed, so
+     * the dashboard runs fine with however many real keys are currently
+     * available. An account uses its configured 'label' if set (e.g. the
+     * Education & Careers accounts use "Education Partner A/B"); otherwise it
+     * falls back to "Real Account #N", numbered in config order counting only
+     * the accounts actually present.
+     *
+     * @return list<RealAdsSource>
+     */
+    public static function fromConfig(): array
+    {
+        $sources = [];
+        foreach (config('ads.accounts', []) as $account) {
+            if (empty($account['api_key'])) {
+                continue;
+            }
+            $label = $account['label'] ?? 'Real Account #'.(count($sources) + 1);
+            $sources[] = new self($account['id'], $account['api_key'], $label);
+        }
+
+        return $sources;
+    }
 
     public function label(): string
     {
@@ -17,7 +53,7 @@ final class RealAdsSource implements PerformanceSource
 
     public function accounts(): array
     {
-        return [self::ACCOUNT_ID => 'Real Account #1'];
+        return [$this->accountId => $this->displayLabel];
     }
 
     /**
@@ -28,8 +64,7 @@ final class RealAdsSource implements PerformanceSource
      */
     public function records(string $from, string $to): array
     {
-        $key = config('ads.api_key');
-        if (! $key) {
+        if (! $this->apiKey) {
             throw new RuntimeException('no API key is configured');
         }
 
@@ -52,12 +87,13 @@ final class RealAdsSource implements PerformanceSource
             }
 
             $url = rtrim(config('ads.base_url'), '/').'/ad_account/insights';
-            $response = Http::withToken($key)
+            $response = Http::withToken($this->apiKey)
                 ->acceptJson()
                 ->timeout(20)
                 ->get($url, $query);
 
             Log::channel(config('logging.default'))->info('ads_api.insights_response', [
+                'account' => $this->displayLabel,
                 'url' => $url,
                 'query' => $query,
                 'status' => $response->status(),
@@ -79,7 +115,7 @@ final class RealAdsSource implements PerformanceSource
                 $campaignNumbers[$campaignId] ??= count($campaignNumbers) + 1;
 
                 $records[] = new PerformanceRecord(
-                    self::ACCOUNT_ID,
+                    $this->accountId,
                     $campaignId,
                     'Campaign #'.$campaignNumbers[$campaignId],
                     (string) $row['readable_time'],
