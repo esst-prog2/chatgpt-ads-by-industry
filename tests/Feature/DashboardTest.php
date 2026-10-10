@@ -217,4 +217,54 @@ class DashboardTest extends TestCase
         // average would be 5.5%, far from the weighted figure asserted above.
         $this->assertNotEqualsWithDelta(0.055, $industry['ctr'], 0.01);
     }
+
+    /**
+     * HW5: checks the dashboard's Education & Careers weighted CTR/CPC for
+     * 2026-09-08 to 2026-09-22 against the manually-calculated external
+     * expected value in PLANNING_LOG.md. The fake HTTP responses below carry
+     * the real per-account totals pulled live from both accounts for this
+     * exact window on 2026-10-10 (impressions/clicks/spend only - no campaign
+     * name or account identity): combined, impressions=46453, clicks=558,
+     * spend=155501.64 HUF, giving CTR 1.2012% and CPC 278.68 HUF.
+     *
+     * That does not match the manually-calculated external expected value
+     * (CTR 1.21%, CPC 272 Ft) - CTR is within rounding, CPC is off by about
+     * 2.4%, more than rounding. Per 2026-10-10 PLANNING_LOG.md, logged as the
+     * manual calculation being in error: this test asserts the real,
+     * reproduced figures, not the external 272 Ft value.
+     */
+    public function test_education_segment_weighted_ctr_and_cpc_for_sept_8_to_22(): void
+    {
+        config(['ads.accounts' => [
+            ['id' => 'real-account-1', 'api_key' => 'key-one', 'label' => 'Education Partner A'],
+            ['id' => 'real-account-2', 'api_key' => 'key-two', 'label' => 'Education Partner B'],
+        ]]);
+        Http::fake([
+            '*' => function ($request) {
+                $isAccountOne = $request->hasHeader('Authorization', 'Bearer key-one');
+                // One row per account carrying that account's totals for the whole
+                // window; Aggregator sums whatever rows a source returns regardless
+                // of which single date they are tagged with.
+                $row = $isAccountOne
+                    ? $this->realRow('2026-09-08', imp: 26262, clk: 265, spend: 77820.05)
+                    : $this->realRow('2026-09-08', imp: 20191, clk: 293, spend: 77681.59);
+
+                return Http::response(['data' => [$row], 'has_more' => false]);
+            },
+        ]);
+
+        $response = $this->get('/?from=2026-09-08&to=2026-09-22&industry='.urlencode('Education & Careers'))->assertOk();
+        $industry = $response->viewData('industryTotals')['Education & Careers'];
+
+        $this->assertSame(46453, $industry['impressions']);
+        $this->assertSame(558, $industry['clicks']);
+        $this->assertEqualsWithDelta(155501.64, $industry['spend'], 0.01);
+        $this->assertEqualsWithDelta(0.012012, $industry['ctr'], 0.000001);
+        $this->assertEqualsWithDelta(278.68, $industry['cpc'], 0.01);
+
+        // Documents the mismatch against the external expected value rather than
+        // hiding it: the real figures are not within simple-rounding distance of
+        // the manually-calculated 272 Ft.
+        $this->assertGreaterThan(1.0, abs($industry['cpc'] - 272));
+    }
 }
