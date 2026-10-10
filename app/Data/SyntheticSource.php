@@ -9,12 +9,11 @@ final class SyntheticSource implements PerformanceSource
     public const DAYS = 30;
 
     // CPC (5th column) targets realistic Hungarian PPC ranges per industry:
-    // Retail & eCommerce ~120-350 HUF, Software & Technology ~400-1200 HUF,
-    // Education & Careers ~250-600 HUF (Brightpath Academy sits near the real
-    // account's ~300 HUF level). See PLANNING_LOG.md.
+    // Retail & eCommerce ~120-350 HUF, Software & Technology ~400-1200 HUF. See
+    // PLANNING_LOG.md. Education & Careers has no synthetic placeholder: since
+    // 2026-10-10 that segment consists exclusively of the two real accounts
+    // (config('ads.accounts')) - see account_industry.csv and PLANNING_LOG.md.
     private const ACCOUNTS = [
-        'syn-edu-1' => ['Brightpath Academy', 12000, 0.021, 330, ['Autumn Enrolment', 'Open Day', 'Online Courses']],
-        'syn-edu-2' => ['CareerLift', 9000, 0.034, 480, ['Graduate Jobs', 'CV Workshop']],
         'syn-ret-1' => ['Urban Threads', 30000, 0.018, 150, ['Autumn Collection', 'Sale Weekend', 'New Arrivals', 'Loyalty Club']],
         'syn-ret-2' => ['HomeNest Store', 22000, 0.026, 230, ['Furniture Deals', 'Kitchen Range']],
         'syn-ret-3' => ['GadgetBay', 26000, 0.015, 300, ['Phones', 'Laptops', 'Accessories']],

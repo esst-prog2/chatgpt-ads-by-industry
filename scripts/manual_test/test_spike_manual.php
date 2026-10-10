@@ -25,15 +25,20 @@ use App\Services\Aggregator;
 use App\Services\SpikeAnalyzer;
 use Carbon\CarbonImmutable;
 
-config(['ads.api_key' => env('ADS_API_KEY')]);
-
 echo "=== MANUÁLIS SPIKE ELLENŐRZÉS ===\n\n";
 
 $spike = new SpikeAnalyzer;
 
 // 1. A valódi kampány 1-7. és 8-14. napjának lekérése és a heti CTR/CPC kiszámítása.
+// Ez a spike egyetlen valódi kampányra vonatkozik, ezért csak az első beállított
+// valódi fiókot használja, akkor is, ha időközben egy második is elérhetővé vált.
 
-$real = new RealAdsSource;
+$realSources = RealAdsSource::fromConfig();
+if (empty($realSources)) {
+    echo "[HIBA] Nincs beállítva valódi Ads API kulcs (ADS_API_KEY a .env-ben).\n";
+    exit(1);
+}
+$real = $realSources[0];
 $realRecords = $real->records('2026-01-01', CarbonImmutable::yesterday()->toDateString());
 
 try {
@@ -67,7 +72,12 @@ $aggregator = new Aggregator;
 
 $to = CarbonImmutable::yesterday()->toDateString();
 $from = CarbonImmutable::yesterday()->subDays(27)->toDateString();
-$allRecords = array_merge((new SyntheticSource)->records($from, $to), $real->records($from, $to));
+// Minden beállított valódi fiókot felhasznál (nem csak a fenti egy kampányt), hogy
+// az iparági medián megegyezzen azzal, amit az éles dashboard ténylegesen mutat.
+$allRecords = array_merge(
+    (new SyntheticSource)->records($from, $to),
+    ...array_map(fn ($source) => $source->records($from, $to), $realSources),
+);
 $campaignTotals = $aggregator->campaignTotals($allRecords);
 
 $ctrMedians = array_map([$spike, 'median'], $aggregator->boxPlotValues($campaignTotals, $mapping, 'ctr'));

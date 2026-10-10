@@ -28,8 +28,6 @@ use App\Services\Aggregator;
 use App\Services\SpikeAnalyzer;
 use Carbon\CarbonImmutable;
 
-config(['ads.api_key' => env('ADS_API_KEY')]);
-
 function spike_fmt_pct(?float $v): string
 {
     return $v === null ? 'n/a' : number_format($v * 100, 2).'%';
@@ -48,8 +46,15 @@ function spike_fmt_signed(?float $v): string
 $spike = new SpikeAnalyzer;
 
 // --- 1. Real campaign: week-over-week CTR/CPC swing, from whatever real delivery days exist ---
+// This spike is scoped to one real campaign (see the question above), so it only
+// uses the first configured real account, even if a second one is now available.
 
-$real = new RealAdsSource;
+$realSources = RealAdsSource::fromConfig();
+if (empty($realSources)) {
+    fwrite(STDERR, "No real Ads API key is configured (ADS_API_KEY in .env).\n");
+    exit(1);
+}
+$real = $realSources[0];
 $allRealRecords = $real->records('2026-01-01', CarbonImmutable::yesterday()->toDateString());
 
 $windows = $spike->splitIntoTwoWindows($allRealRecords, 7);
@@ -74,9 +79,11 @@ $aggregator = new Aggregator;
 $to = CarbonImmutable::yesterday()->toDateString();
 $from = CarbonImmutable::yesterday()->subDays(27)->toDateString();
 
+// Uses every configured real account (not just the one this spike is scoped to
+// above), so the median gap matches what the live dashboard actually shows.
 $allRecords = array_merge(
     (new SyntheticSource)->records($from, $to),
-    $real->records($from, $to),
+    ...array_map(fn ($source) => $source->records($from, $to), $realSources),
 );
 $campaignTotals = $aggregator->campaignTotals($allRecords);
 
@@ -102,7 +109,7 @@ if ($windows['leftover']) {
 echo '  CTR week-over-week swing: '.spike_fmt_signed($ctrSwing)."%\n";
 echo '  CPC week-over-week swing: '.spike_fmt_signed($cpcSwing)."%\n\n";
 
-echo "Between-industry median gaps (box plot medians, last 28 days, all industries incl. Education & Careers which contains Real Account #1):\n";
+echo "Between-industry median gaps (box plot medians, last 28 days; Education & Careers is exclusively real accounts, no synthetic placeholder):\n";
 echo '  CTR medians by industry: ';
 foreach ($ctrMedians as $industry => $v) {
     echo "{$industry}=".spike_fmt_pct($v).'  ';
