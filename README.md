@@ -52,7 +52,7 @@ ChatGPT Ads API: <https://developers.openai.com/ads>
 ## 6. Running the MVP
 
 1.  Install PHP and Composer (for example with Laravel Herd), then run `composer install` and `cp .env.example .env && php artisan key:generate`.
-2.  Optional: put your one ChatGPT Ads API key in `.env` as `ADS_API_KEY`. Without it, the dashboard shows the synthetic accounts and a notice.
+2.  Optional: put a real ChatGPT Ads API key in `.env` as `ADS_API_KEY` (first real account) and/or `ADS_API_KEY_2` (second real account, both mapped to Education & Careers). Each key maps to its own account automatically (see `config/ads.php`, `App\Data\RealAdsSource::fromConfig()`); without any key, the dashboard runs on the synthetic accounts alone. A key that is rejected by the API still shows a notice; a key that is simply absent does not, since an account not yet onboarded isn't a failure.
 3.  `php artisan serve`, then open <http://127.0.0.1:8000>.
 4.  `php artisan test` runs the tests.
 
