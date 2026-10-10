@@ -16,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(DashboardService::class, fn () => new DashboardService(
-            [new SyntheticSource, new RealAdsSource],
+            [new SyntheticSource, ...RealAdsSource::fromConfig()],
             IndustryMapping::fromCsv(database_path('data/account_industry.csv')),
         ));
     }
