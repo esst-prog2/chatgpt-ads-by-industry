@@ -220,20 +220,21 @@ class DashboardTest extends TestCase
 
     /**
      * HW5: checks the dashboard's Education & Careers weighted CTR/CPC for
-     * 2026-09-08 to 2026-09-22 against the manually-calculated external
-     * expected value in PLANNING_LOG.md. The fake HTTP responses below carry
-     * the real per-account totals pulled live from both accounts for this
-     * exact window on 2026-10-10 (impressions/clicks/spend only - no campaign
-     * name or account identity): combined, impressions=46453, clicks=558,
-     * spend=155501.64 HUF, giving CTR 1.2012% and CPC 278.68 HUF.
-     *
-     * That does not match the manually-calculated external expected value
-     * (CTR 1.21%, CPC 272 Ft) - CTR is within rounding, CPC is off by about
-     * 2.4%, more than rounding. Per 2026-10-10 PLANNING_LOG.md, logged as the
-     * manual calculation being in error: this test asserts the real,
-     * reproduced figures, not the external 272 Ft value.
+     * 2026-09-08 to 2026-09-21 (14 days - the correct "first two weeks"
+     * window; an earlier 15-day version of this test, through 09-22, matched
+     * a different, incorrect manual calculation - see PLANNING_LOG.md
+     * 2026-10-10). The fake HTTP responses below carry the real per-account
+     * totals pulled live from both accounts for this exact window, reverified
+     * three times on 2026-10-10 (impressions/clicks/spend only - no campaign
+     * name or account identity):
+     *   Account #1: impressions=24171, clicks=253, spend=71274.51
+     *   Account #2: impressions=19356, clicks=286, spend=72019.36
+     *   Combined:   impressions=43527, clicks=539, spend=143293.87
+     *   CTR = 539/43527 = 1.2383%, CPC = 143293.87/539 = 265.85 Ft
+     * This now matches the manually-calculated external expected value
+     * (CTR 1.24%, CPC 266 Ft / 265.85 Ft) within rounding.
      */
-    public function test_education_segment_weighted_ctr_and_cpc_for_sept_8_to_22(): void
+    public function test_education_segment_weighted_ctr_and_cpc_for_sept_8_to_21(): void
     {
         config(['ads.accounts' => [
             ['id' => 'real-account-1', 'api_key' => 'key-one', 'label' => 'Education Partner A'],
@@ -246,25 +247,26 @@ class DashboardTest extends TestCase
                 // window; Aggregator sums whatever rows a source returns regardless
                 // of which single date they are tagged with.
                 $row = $isAccountOne
-                    ? $this->realRow('2026-09-08', imp: 26262, clk: 265, spend: 77820.05)
-                    : $this->realRow('2026-09-08', imp: 20191, clk: 293, spend: 77681.59);
+                    ? $this->realRow('2026-09-08', imp: 24171, clk: 253, spend: 71274.51)
+                    : $this->realRow('2026-09-08', imp: 19356, clk: 286, spend: 72019.36);
 
                 return Http::response(['data' => [$row], 'has_more' => false]);
             },
         ]);
 
-        $response = $this->get('/?from=2026-09-08&to=2026-09-22&industry='.urlencode('Education & Careers'))->assertOk();
+        $response = $this->get('/?from=2026-09-08&to=2026-09-21&industry='.urlencode('Education & Careers'))->assertOk();
         $industry = $response->viewData('industryTotals')['Education & Careers'];
 
-        $this->assertSame(46453, $industry['impressions']);
-        $this->assertSame(558, $industry['clicks']);
-        $this->assertEqualsWithDelta(155501.64, $industry['spend'], 0.01);
-        $this->assertEqualsWithDelta(0.012012, $industry['ctr'], 0.000001);
-        $this->assertEqualsWithDelta(278.68, $industry['cpc'], 0.01);
+        $this->assertSame(43527, $industry['impressions']);
+        $this->assertSame(539, $industry['clicks']);
+        $this->assertEqualsWithDelta(143293.87, $industry['spend'], 0.01);
+        $this->assertEqualsWithDelta(0.012383, $industry['ctr'], 0.000001); // 1.24%
+        $this->assertEqualsWithDelta(265.85, $industry['cpc'], 0.01); // ~266 Ft
 
-        // Documents the mismatch against the external expected value rather than
-        // hiding it: the real figures are not within simple-rounding distance of
-        // the manually-calculated 272 Ft.
-        $this->assertGreaterThan(1.0, abs($industry['cpc'] - 272));
+        // Structural check for "without relying on synthetic data": only real
+        // accounts are configured, so the drilldown can contain no Synthetic entry.
+        $drill = $response->viewData('drilldown');
+        $this->assertCount(2, $drill);
+        $this->assertSame(['Real', 'Real'], array_column($drill, 'label'));
     }
 }
