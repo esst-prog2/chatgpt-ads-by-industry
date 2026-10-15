@@ -9,6 +9,7 @@ use App\Data\SyntheticSource;
 use App\Services\DashboardService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -136,6 +137,29 @@ class DashboardTest extends TestCase
         $this->get('/')->assertOk()
             ->assertSee('The Real account could not be loaded')
             ->assertSee('Retail &amp; eCommerce', false);
+    }
+
+    public function test_source_load_failure_is_logged_not_silently_dropped(): void
+    {
+        // DashboardService catches Throwable broadly around each source (by
+        // design, so one bad source doesn't take down the whole dashboard),
+        // but that must never mean the real error vanishes - it still has to
+        // reach the log, not just the generic user-facing notice.
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'rejected']]]);
+        Http::fake(['*' => Http::response([], 401)]);
+
+        Log::shouldReceive('channel')->andReturnSelf();
+        Log::shouldReceive('info'); // RealAdsSource's own per-request logging
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(function (string $message, array $context) {
+                return $message === 'dashboard.source_load_failed'
+                    && $context['source'] === 'Real'
+                    && $context['exception'] === \RuntimeException::class
+                    && str_contains($context['message'], 'HTTP 401');
+            });
+
+        $this->get('/')->assertOk()->assertSee('The Real account could not be loaded');
     }
 
     public function test_drilldown_labels_the_real_education_account_and_sums_match_totals(): void
