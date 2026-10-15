@@ -105,9 +105,20 @@ final class RealAdsSource implements PerformanceSource
             }
 
             foreach ($response->json('data', []) as $row) {
-                $impressions = (int) ($row['impressions'] ?? 0);
-                $clicks = (int) ($row['clicks'] ?? 0);
-                $spend = (float) ($row['spend'] ?? 0);
+                // A missing field here means the API response shape changed (a
+                // renamed/removed column), not "no delivery that day" - treating
+                // it as 0 would silently understate real performance instead of
+                // surfacing the integration break, so every expected field must
+                // actually be present, even when its value is legitimately 0.
+                foreach (['impressions', 'clicks', 'spend', 'campaign_id', 'readable_time'] as $field) {
+                    if (! array_key_exists($field, $row)) {
+                        throw new RuntimeException("the Ads API response is missing the expected field \"{$field}\"");
+                    }
+                }
+
+                $impressions = (int) $row['impressions'];
+                $clicks = (int) $row['clicks'];
+                $spend = (float) $row['spend'];
                 if ($impressions === 0 && $clicks === 0 && $spend == 0.0) {
                     continue;
                 }

@@ -9,6 +9,7 @@ use App\Data\RealAdsSource;
 use App\Data\SyntheticSource;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -182,6 +183,29 @@ class DataSourcesTest extends TestCase
         $records = $this->realSource()->records('2026-09-20', '2026-09-21');
         $this->assertCount(1, $records);
         $this->assertSame('2026-09-21', $records[0]->date);
+    }
+
+    #[DataProvider('missingFieldProvider')]
+    public function test_real_source_throws_on_a_row_missing_an_expected_field(string $missingField): void
+    {
+        $row = ['campaign_id' => 'a', 'campaign_name' => 'A', 'readable_time' => '2026-09-20', 'impressions' => 50, 'clicks' => 2, 'spend' => 1.5];
+        unset($row[$missingField]);
+        Http::fake(['*' => Http::response(['data' => [$row], 'has_more' => false])]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("missing the expected field \"{$missingField}\"");
+        $this->realSource()->records('2026-09-20', '2026-09-20');
+    }
+
+    public static function missingFieldProvider(): array
+    {
+        return [
+            'impressions' => ['impressions'],
+            'clicks' => ['clicks'],
+            'spend' => ['spend'],
+            'campaign_id' => ['campaign_id'],
+            'readable_time' => ['readable_time'],
+        ];
     }
 
     public function test_real_source_fails_without_key_or_on_rejection(): void
