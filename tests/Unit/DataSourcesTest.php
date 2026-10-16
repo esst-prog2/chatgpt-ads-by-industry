@@ -9,6 +9,7 @@ use App\Data\RealAdsSource;
 use App\Data\SyntheticSource;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -40,10 +41,12 @@ class DataSourcesTest extends TestCase
     public function test_synthetic_spend_exactly_equals_clicks_times_cpc_with_no_rounding_drift(): void
     {
         $records = (new SyntheticSource(self::END))->records('2000-01-01', '2100-01-01');
+        // Bands reflect each industry's real-account CPC range (see
+        // SyntheticSource's own class comment, pulled live 2026-10-16).
         $bands = [
-            'Retail & eCommerce' => [120, 350],
-            'Software & Technology' => [400, 1200],
-            'Education & Careers' => [250, 600],
+            'Education & Careers' => [309, 438],
+            'Professional Services' => [253, 532],
+            'Health' => [236, 238],
         ];
 
         foreach ($records as $r) {
@@ -73,11 +76,13 @@ class DataSourcesTest extends TestCase
             $industries[$this->mapping()->industryOf($r->account)][$r->account] = true;
             $campaigns[$r->account][$r->campaignId] = true;
         }
-        // Retail & eCommerce and Software & Technology only: Education & Careers
-        // has no synthetic placeholder since 2026-10-10 - it's exclusively the
-        // two real accounts (see account_industry.csv, PLANNING_LOG.md).
-        $this->assertCount(2, $industries);
-        $this->assertArrayNotHasKey('Education & Careers', $industries);
+        // Education & Careers, Professional Services, Health only: synthetic
+        // data exists only for industries that have at least one real account
+        // (see account_industry.csv, PLANNING_LOG.md 2026-10-16).
+        $this->assertEqualsCanonicalizing(
+            ['Education & Careers', 'Professional Services', 'Health'],
+            array_keys($industries)
+        );
         foreach ($industries as $accounts) {
             $this->assertGreaterThanOrEqual(1, count($accounts));
         }
@@ -87,11 +92,10 @@ class DataSourcesTest extends TestCase
         }
     }
 
-    public function test_every_industry_has_at_least_two_accounts_counting_both_real_accounts(): void
+    public function test_every_industry_has_at_least_two_accounts_counting_real_and_synthetic(): void
     {
-        // Education & Careers is exclusively the two real accounts, so it needs
-        // both, not a synthetic placeholder, to reach the two-account minimum.
-        $accounts = array_unique(array_merge(array_keys((new SyntheticSource(self::END))->accounts()), ['real-account-1', 'real-account-2']));
+        $realIds = ['real-account-1', 'real-account-2', 'real-account-3', 'real-account-4', 'real-account-5'];
+        $accounts = array_unique(array_merge(array_keys((new SyntheticSource(self::END))->accounts()), $realIds));
         $perIndustry = [];
         foreach ($accounts as $account) {
             $perIndustry[$this->mapping()->industryOf($account)][] = $account;
@@ -100,7 +104,8 @@ class DataSourcesTest extends TestCase
         foreach ($perIndustry as $industry => $list) {
             $this->assertGreaterThanOrEqual(2, count($list), $industry);
         }
-        $this->assertEqualsCanonicalizing(['real-account-1', 'real-account-2'], $perIndustry['Education & Careers']);
+        // Every real-account-* industry also has its synthetic siblings present.
+        $this->assertEqualsCanonicalizing(['real-account-1', 'real-account-2', 'syn-edu-1', 'syn-edu-2'], $perIndustry['Education & Careers']);
     }
 
     public function test_synthetic_loads_are_identical(): void
@@ -182,6 +187,29 @@ class DataSourcesTest extends TestCase
         $records = $this->realSource()->records('2026-09-20', '2026-09-21');
         $this->assertCount(1, $records);
         $this->assertSame('2026-09-21', $records[0]->date);
+    }
+
+    #[DataProvider('missingFieldProvider')]
+    public function test_real_source_throws_on_a_row_missing_an_expected_field(string $missingField): void
+    {
+        $row = ['campaign_id' => 'a', 'campaign_name' => 'A', 'readable_time' => '2026-09-20', 'impressions' => 50, 'clicks' => 2, 'spend' => 1.5];
+        unset($row[$missingField]);
+        Http::fake(['*' => Http::response(['data' => [$row], 'has_more' => false])]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("missing the expected field \"{$missingField}\"");
+        $this->realSource()->records('2026-09-20', '2026-09-20');
+    }
+
+    public static function missingFieldProvider(): array
+    {
+        return [
+            'impressions' => ['impressions'],
+            'clicks' => ['clicks'],
+            'spend' => ['spend'],
+            'campaign_id' => ['campaign_id'],
+            'readable_time' => ['readable_time'],
+        ];
     }
 
     public function test_real_source_fails_without_key_or_on_rejection(): void
