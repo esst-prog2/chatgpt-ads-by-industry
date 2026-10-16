@@ -1,11 +1,12 @@
 account_id,industry
 real-account-1,Education & Careers
 real-account-2,Education & Careers
-syn-ret-1,Retail & eCommerce
-syn-ret-2,Retail & eCommerce
-syn-ret-3,Retail & eCommerce
-syn-sw-1,Software & Technology
-syn-sw-2,Software & Technology
+syn-edu-1,Education & Careers
+syn-edu-2,Education & Careers
 real-account-3,Professional Services
-real-account-4,Health
 real-account-5,Professional Services
+syn-pro-1,Professional Services
+syn-pro-2,Professional Services
+real-account-4,Health
+syn-health-1,Health
+syn-health-2,Health

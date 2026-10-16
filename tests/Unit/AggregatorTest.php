@@ -6,12 +6,13 @@ use App\Data\IndustryMapping;
 use App\Data\PerformanceRecord;
 use App\Services\Aggregator;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class AggregatorTest extends TestCase
 {
-    private function rec(string $account, string $campaign, string $date, int $imp, int $clk, float $spend): PerformanceRecord
+    private function rec(string $account, string $campaign, string $date, int $imp, int $clk, float $spend, string $currency = 'HUF'): PerformanceRecord
     {
-        return new PerformanceRecord($account, $campaign, $campaign, $date, $imp, $clk, $spend);
+        return new PerformanceRecord($account, $campaign, $campaign, $date, $imp, $clk, $spend, $currency);
     }
 
     public function test_campaign_totals_sum_days_and_compute_ctr_from_sums(): void
@@ -92,5 +93,74 @@ class AggregatorTest extends TestCase
         $this->assertNull($totals['a1|c1']['cpc']);
         $this->assertEquals(2.5, $totals['a1|c2']['cpc']);
         $this->assertSame(['Health' => [2.5]], $agg->boxPlotValues($totals, $mapping, 'cpc'));
+    }
+
+    public function test_campaign_totals_keep_native_currency_and_also_expose_huf_normalized_figures(): void
+    {
+        $agg = new Aggregator(['HUF' => 1.0, 'EUR' => 400.0]);
+        $totals = $agg->campaignTotals([
+            $this->rec('a1', 'c1', '2026-09-01', 1000, 10, 50.0, 'EUR'),
+        ]);
+
+        $c = $totals['a1|c1'];
+        $this->assertSame('EUR', $c['currency']);
+        $this->assertEquals(50.0, $c['spend']); // native, untouched
+        $this->assertEquals(5.0, $c['cpc']); // native: 50 / 10
+        $this->assertEquals(20000.0, $c['spendHuf']); // 50 * 400
+        $this->assertEquals(2000.0, $c['cpcHuf']); // 20000 / 10
+    }
+
+    public function test_industry_totals_normalize_mixed_currencies_to_huf_not_a_naive_raw_sum(): void
+    {
+        $agg = new Aggregator(['HUF' => 1.0, 'EUR' => 400.0]);
+        $mapping = new IndustryMapping(['huf-acct' => 'Professional Services', 'eur-acct' => 'Professional Services']);
+        $totals = $agg->campaignTotals([
+            $this->rec('huf-acct', 'c1', '2026-09-01', 1000, 10, 3000.0, 'HUF'),
+            $this->rec('eur-acct', 'c1', '2026-09-01', 2000, 20, 50.0, 'EUR'),
+        ]);
+
+        $industry = $agg->industryTotals($totals, $mapping)['Professional Services'];
+
+        // 3000 HUF + (50 EUR * 400) = 23000 HUF - not 3000 + 50 = 3050.
+        $this->assertEquals(23000.0, $industry['spend']);
+        $this->assertEquals('HUF', $industry['currency']);
+        $this->assertSame(30, $industry['clicks']);
+        $this->assertEqualsWithDelta(23000.0 / 30, $industry['cpc'], 0.01);
+    }
+
+    public function test_account_totals_stay_in_the_accounts_own_native_currency(): void
+    {
+        $agg = new Aggregator(['HUF' => 1.0, 'EUR' => 400.0]);
+        $totals = $agg->campaignTotals([
+            $this->rec('eur-acct', 'c1', '2026-09-01', 1000, 10, 50.0, 'EUR'),
+        ]);
+
+        $account = $agg->accountTotals($totals)['eur-acct'];
+        $this->assertEquals(50.0, $account['spend']); // not converted
+        $this->assertSame('EUR', $account['currency']);
+    }
+
+    public function test_box_plot_spend_and_cpc_use_huf_normalized_values_in_a_mixed_currency_industry(): void
+    {
+        $agg = new Aggregator(['HUF' => 1.0, 'EUR' => 400.0]);
+        $mapping = new IndustryMapping(['huf-acct' => 'Professional Services', 'eur-acct' => 'Professional Services']);
+        $totals = $agg->campaignTotals([
+            $this->rec('huf-acct', 'c1', '2026-09-01', 1000, 10, 3000.0, 'HUF'),
+            $this->rec('eur-acct', 'c1', '2026-09-01', 2000, 20, 50.0, 'EUR'),
+        ]);
+
+        $spendPoints = $agg->boxPlotValues($totals, $mapping, 'spend')['Professional Services'];
+        sort($spendPoints);
+        $this->assertSame([3000.0, 20000.0], $spendPoints); // 50 EUR shown as 20000 HUF, not 50
+    }
+
+    public function test_throws_when_a_record_uses_a_currency_with_no_configured_exchange_rate(): void
+    {
+        $agg = new Aggregator(['HUF' => 1.0]); // no USD rate configured
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('no exchange rate configured for currency "USD"');
+        $agg->campaignTotals([
+            $this->rec('a1', 'c1', '2026-09-01', 100, 5, 10.0, 'USD'),
+        ]);
     }
 }

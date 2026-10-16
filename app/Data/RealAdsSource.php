@@ -9,8 +9,11 @@ use RuntimeException;
 /**
  * One real ChatGPT Ads account. Each Ads API key is scoped to a single
  * account, so a second real account is a second instance of this class with
- * its own id, key and display label - see AppServiceProvider, which builds
- * one instance per configured key in config('ads.accounts').
+ * its own id, key, display label and currency - see AppServiceProvider,
+ * which builds one instance per configured key in config('ads.accounts').
+ * Currency is configured, not fetched from the API: it's a fixed property of
+ * an account that doesn't change, and GET /ad_account/insights (what records()
+ * actually calls) doesn't return it anyway.
  */
 final class RealAdsSource implements PerformanceSource
 {
@@ -18,6 +21,7 @@ final class RealAdsSource implements PerformanceSource
         private readonly string $accountId,
         private readonly string $apiKey,
         private readonly string $displayLabel,
+        private readonly string $currency = 'HUF',
     ) {}
 
     /**
@@ -40,7 +44,7 @@ final class RealAdsSource implements PerformanceSource
                 continue;
             }
             $label = $account['label'] ?? 'Real Account #'.(count($sources) + 1);
-            $sources[] = new self($account['id'], $account['api_key'], $label);
+            $sources[] = new self($account['id'], $account['api_key'], $label, $account['currency'] ?? 'HUF');
         }
 
         return $sources;
@@ -133,6 +137,7 @@ final class RealAdsSource implements PerformanceSource
                     $impressions,
                     $clicks,
                     $spend,
+                    $this->currency,
                 );
             }
 

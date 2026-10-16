@@ -33,10 +33,13 @@
 
     @php($metricLabels = ['impressions' => 'Impressions', 'clicks' => 'Clicks', 'spend' => 'Spend', 'ctr' => 'CTR', 'cpc' => 'CPC'])
     {{--
-        Displayed Spend is rounded to whole HUF for the table. CPC is derived from
-        that SAME rounded Spend (not the unrounded total), so dividing the two
-        numbers actually printed on screen always reproduces the printed CPC exactly,
-        with only one rounding step - no double-rounding drift is possible.
+        Displayed Spend is rounded to a whole unit of its own currency for the table.
+        CPC is derived from that SAME rounded Spend (not the unrounded total), so
+        dividing the two numbers actually printed on screen always reproduces the
+        printed CPC exactly, with only one rounding step - no double-rounding drift
+        is possible. Industry totals are always HUF (accounts of different
+        currencies are normalized before summing - see Aggregator); account and
+        campaign rows stay in that account's own native currency.
     --}}
     @php($displaySpend = fn (array $t) => (int) round($t['spend']))
     @php($displayCpc = fn (array $t) => $t['clicks'] > 0 ? (int) round($displaySpend($t) / $t['clicks']) : null)
@@ -104,8 +107,8 @@
                         <td><strong>{{ $a['name'] }}</strong> <span class="tag {{ $a['label'] === 'Real' ? 'real' : '' }}">{{ $a['label'] }}</span></td>
                         @if ($a['totals'])
                             <td>{{ number_format($a['totals']['impressions']) }}</td><td>{{ number_format($a['totals']['clicks']) }}</td>
-                            <td>{{ number_format($displaySpend($a['totals'])) }} HUF</td><td>{{ $a['totals']['ctr'] === null ? '–' : number_format($a['totals']['ctr'] * 100, 2).'%' }}</td>
-                            <td>{{ $displayCpc($a['totals']) === null ? '–' : number_format($displayCpc($a['totals'])).' HUF' }}</td>
+                            <td>{{ number_format($displaySpend($a['totals'])) }} {{ $a['totals']['currency'] }}</td><td>{{ $a['totals']['ctr'] === null ? '–' : number_format($a['totals']['ctr'] * 100, 2).'%' }}</td>
+                            <td>{{ $displayCpc($a['totals']) === null ? '–' : number_format($displayCpc($a['totals'])).' '.$a['totals']['currency'] }}</td>
                         @else
                             <td colspan="5" class="muted">no data in this range</td>
                         @endif
@@ -114,8 +117,8 @@
                         <tr>
                             <td class="muted">&nbsp;&nbsp;{{ $c['campaign'] }}</td>
                             <td>{{ number_format($c['impressions']) }}</td><td>{{ number_format($c['clicks']) }}</td>
-                            <td>{{ number_format($displaySpend($c)) }} HUF</td><td>{{ $c['ctr'] === null ? '–' : number_format($c['ctr'] * 100, 2).'%' }}</td>
-                            <td>{{ $displayCpc($c) === null ? '–' : number_format($displayCpc($c)).' HUF' }}</td>
+                            <td>{{ number_format($displaySpend($c)) }} {{ $c['currency'] }}</td><td>{{ $c['ctr'] === null ? '–' : number_format($c['ctr'] * 100, 2).'%' }}</td>
+                            <td>{{ $displayCpc($c) === null ? '–' : number_format($displayCpc($c)).' '.$c['currency'] }}</td>
                         </tr>
                     @endforeach
                 @endforeach
