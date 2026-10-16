@@ -9,8 +9,11 @@ use RuntimeException;
 /**
  * One real ChatGPT Ads account. Each Ads API key is scoped to a single
  * account, so a second real account is a second instance of this class with
- * its own id, key and display label - see AppServiceProvider, which builds
- * one instance per configured key in config('ads.accounts').
+ * its own id, key, display label and currency - see AppServiceProvider,
+ * which builds one instance per configured key in config('ads.accounts').
+ * Currency is configured, not fetched from the API: it's a fixed property of
+ * an account that doesn't change, and GET /ad_account/insights (what records()
+ * actually calls) doesn't return it anyway.
  */
 final class RealAdsSource implements PerformanceSource
 {
@@ -18,6 +21,7 @@ final class RealAdsSource implements PerformanceSource
         private readonly string $accountId,
         private readonly string $apiKey,
         private readonly string $displayLabel,
+        private readonly string $currency = 'HUF',
     ) {}
 
     /**
@@ -40,7 +44,7 @@ final class RealAdsSource implements PerformanceSource
                 continue;
             }
             $label = $account['label'] ?? 'Real Account #'.(count($sources) + 1);
-            $sources[] = new self($account['id'], $account['api_key'], $label);
+            $sources[] = new self($account['id'], $account['api_key'], $label, $account['currency'] ?? 'HUF');
         }
 
         return $sources;
@@ -105,9 +109,20 @@ final class RealAdsSource implements PerformanceSource
             }
 
             foreach ($response->json('data', []) as $row) {
-                $impressions = (int) ($row['impressions'] ?? 0);
-                $clicks = (int) ($row['clicks'] ?? 0);
-                $spend = (float) ($row['spend'] ?? 0);
+                // A missing field here means the API response shape changed (a
+                // renamed/removed column), not "no delivery that day" - treating
+                // it as 0 would silently understate real performance instead of
+                // surfacing the integration break, so every expected field must
+                // actually be present, even when its value is legitimately 0.
+                foreach (['impressions', 'clicks', 'spend', 'campaign_id', 'readable_time'] as $field) {
+                    if (! array_key_exists($field, $row)) {
+                        throw new RuntimeException("the Ads API response is missing the expected field \"{$field}\"");
+                    }
+                }
+
+                $impressions = (int) $row['impressions'];
+                $clicks = (int) $row['clicks'];
+                $spend = (float) $row['spend'];
                 if ($impressions === 0 && $clicks === 0 && $spend == 0.0) {
                     continue;
                 }
@@ -122,6 +137,7 @@ final class RealAdsSource implements PerformanceSource
                     $impressions,
                     $clicks,
                     $spend,
+                    $this->currency,
                 );
             }
 

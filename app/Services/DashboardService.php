@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Data\Industries;
 use App\Data\IndustryMapping;
 use App\Data\PerformanceSource;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final class DashboardService
@@ -31,6 +32,17 @@ final class DashboardService
             try {
                 array_push($records, ...$source->records($from, $to));
             } catch (Throwable $e) {
+                // Caught broadly and turned into a soft notice by design - a missing
+                // or rejected API key is expected and the dashboard should still
+                // render with the other sources - but it must never be silently
+                // dropped: log it so a real bug (not just "no key configured")
+                // leaves a trace instead of only ever showing as a generic notice.
+                Log::channel(config('logging.default'))->error('dashboard.source_load_failed', [
+                    'source' => $source->label(),
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
                 $notices[] = "The {$source->label()} account could not be loaded: {$e->getMessage()}.";
             }
         }

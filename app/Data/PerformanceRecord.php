@@ -12,5 +12,10 @@ final class PerformanceRecord
         public readonly int $impressions,
         public readonly int $clicks,
         public readonly float $spend,
+        // Spend's currency (ISO 4217-ish code, e.g. "HUF", "EUR"). One campaign
+        // always belongs to one account, which has one currency, so this is
+        // unambiguous even though industries can mix accounts of different
+        // currencies - see Aggregator for where that mixing gets normalized.
+        public readonly string $currency = 'HUF',
     ) {}
 }
