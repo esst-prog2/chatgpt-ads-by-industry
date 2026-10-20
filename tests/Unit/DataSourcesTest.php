@@ -145,7 +145,7 @@ class DataSourcesTest extends TestCase
         $records = $this->realSource()->records('2026-09-20', '2026-09-21');
 
         $this->assertCount(1, $records);
-        $this->assertEquals(new PerformanceRecord('real-account-1', 'cmpn_1', 'Campaign #1', '2026-09-20', 1200, 36, 18.42), $records[0]);
+        $this->assertEquals(new PerformanceRecord('real-account-1', 'cmpn_1', 'Campaign #1', '2026-09-20', 1200, 36, 18.42, 'HUF'), $records[0]);
         Http::assertSent(fn ($r) => $r->hasHeader('Authorization', 'Bearer test-key') && str_contains($r->url(), '/ad_account/insights'));
     }
 
@@ -229,9 +229,9 @@ class DataSourcesTest extends TestCase
     public function test_from_config_skips_accounts_with_no_key_and_numbers_the_rest_in_order(): void
     {
         config(['ads.accounts' => [
-            ['id' => 'real-account-1', 'api_key' => 'key-one'],
-            ['id' => 'real-account-2', 'api_key' => ''],
-            ['id' => 'real-account-3', 'api_key' => 'key-three'],
+            ['id' => 'real-account-1', 'api_key' => 'key-one', 'currency' => 'HUF'],
+            ['id' => 'real-account-2', 'api_key' => '', 'currency' => 'HUF'],
+            ['id' => 'real-account-3', 'api_key' => 'key-three', 'currency' => 'HUF'],
         ]]);
 
         $sources = RealAdsSource::fromConfig();
@@ -244,6 +244,30 @@ class DataSourcesTest extends TestCase
     public function test_from_config_returns_no_sources_when_no_key_is_set(): void
     {
         config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+
+        $this->assertSame([], RealAdsSource::fromConfig());
+    }
+
+    public function test_from_config_throws_when_a_configured_account_has_no_currency(): void
+    {
+        // An account WITH a key but no ADS_API_CURRENCY_N is a misconfiguration,
+        // not an assumed HUF account - must fail loudly, not silently default.
+        config(['ads.accounts' => [
+            ['id' => 'real-account-1', 'api_key' => 'key-one', 'currency' => null],
+        ]]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('real-account-1" has an API key but no configured currency');
+        RealAdsSource::fromConfig();
+    }
+
+    public function test_from_config_does_not_throw_for_a_skipped_account_with_no_currency(): void
+    {
+        // A slot with no key is skipped before the currency check ever runs -
+        // an account not yet onboarded isn't a currency misconfiguration either.
+        config(['ads.accounts' => [
+            ['id' => 'real-account-1', 'api_key' => null, 'currency' => null],
+        ]]);
 
         $this->assertSame([], RealAdsSource::fromConfig());
     }

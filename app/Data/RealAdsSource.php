@@ -32,7 +32,10 @@ final class RealAdsSource implements PerformanceSource
      * available. An account uses its configured 'label' if set (e.g. the
      * Education & Careers accounts use "Education Partner A/B"); otherwise it
      * falls back to "Real Account #N", numbered in config order counting only
-     * the accounts actually present.
+     * the accounts actually present. An account WITH a key but no configured
+     * currency (ADS_API_CURRENCY_N) is a misconfiguration, not an assumed
+     * HUF account: it throws rather than silently defaulting, same as a
+     * missing field in the API response itself (see PLANNING_LOG.md 2026-10-20).
      *
      * @return list<RealAdsSource>
      */
@@ -43,8 +46,13 @@ final class RealAdsSource implements PerformanceSource
             if (empty($account['api_key'])) {
                 continue;
             }
+            if (empty($account['currency'])) {
+                throw new RuntimeException(
+                    "Account \"{$account['id']}\" has an API key but no configured currency - set ADS_API_CURRENCY_N in .env."
+                );
+            }
             $label = $account['label'] ?? 'Real Account #'.(count($sources) + 1);
-            $sources[] = new self($account['id'], $account['api_key'], $label, $account['currency'] ?? 'HUF');
+            $sources[] = new self($account['id'], $account['api_key'], $label, $account['currency']);
         }
 
         return $sources;
