@@ -16,6 +16,9 @@ final class PerformanceRecord
         // always belongs to one account, which has one currency, so this is
         // unambiguous even though industries can mix accounts of different
         // currencies - see Aggregator for where that mixing gets normalized.
-        public readonly string $currency = 'HUF',
+        // No default: every caller must say explicitly which currency a
+        // record is in, rather than a silent HUF assumption creeping into
+        // the data type itself (see PLANNING_LOG.md 2026-10-20).
+        public readonly string $currency,
     ) {}
 }

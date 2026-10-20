@@ -16,7 +16,7 @@ class SpikeCalculationTest extends TestCase
         for ($i = 0; $i < $days; $i++) {
             $date = $start->modify("+{$i} days")->format('Y-m-d');
             [$impressions, $clicks, $spend] = $valuesForDay($i);
-            $records[] = new PerformanceRecord('real-account', 'cmpn_1', 'Campaign #1', $date, $impressions, $clicks, $spend);
+            $records[] = new PerformanceRecord('real-account', 'cmpn_1', 'Campaign #1', $date, $impressions, $clicks, $spend, 'HUF');
         }
 
         return $records;
@@ -63,8 +63,8 @@ class SpikeCalculationTest extends TestCase
         // Day 1: 1000 impressions, 5 clicks (CTR 0.5%). Day 2: 100 impressions, 10 clicks (CTR 10%).
         // A naive average of daily CTRs would give 5.25%; the weighted total must not.
         $records = [
-            new PerformanceRecord('real-account', 'cmpn_1', 'Campaign #1', '2026-09-08', 1000, 5, 50.0),
-            new PerformanceRecord('real-account', 'cmpn_1', 'Campaign #1', '2026-09-09', 100, 10, 200.0),
+            new PerformanceRecord('real-account', 'cmpn_1', 'Campaign #1', '2026-09-08', 1000, 5, 50.0, 'HUF'),
+            new PerformanceRecord('real-account', 'cmpn_1', 'Campaign #1', '2026-09-09', 100, 10, 200.0, 'HUF'),
         ];
         $spike = new SpikeAnalyzer;
         $padding = $this->recordsOverDays(12, fn ($i) => [1, 0, 0.0], '2026-09-10'); // fills the window requirement without overlapping the two known dates
@@ -82,7 +82,7 @@ class SpikeCalculationTest extends TestCase
     {
         $week1 = $this->recordsOverDays(7, fn ($i) => [1000, 10, 500.0]); // CTR 1%, CPC 50
         $week2 = array_map(
-            fn (PerformanceRecord $r) => new PerformanceRecord($r->account, $r->campaignId, $r->campaign, (new \DateTimeImmutable($r->date))->modify('+7 days')->format('Y-m-d'), 1000, 20, 1800.0), // CTR 2%, CPC 90
+            fn (PerformanceRecord $r) => new PerformanceRecord($r->account, $r->campaignId, $r->campaign, (new \DateTimeImmutable($r->date))->modify('+7 days')->format('Y-m-d'), 1000, 20, 1800.0, $r->currency), // CTR 2%, CPC 90
             $week1
         );
         $spike = new SpikeAnalyzer;

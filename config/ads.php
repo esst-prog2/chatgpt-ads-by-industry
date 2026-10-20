@@ -7,7 +7,10 @@ $firstAccount = [
     'id' => 'real-account-1',
     'api_key' => env('ADS_API_KEY'),
     'label' => env('ADS_API_LABEL_1'),
-    'currency' => env('ADS_API_CURRENCY_1', 'HUF'),
+    // No default: a configured account with no ADS_API_CURRENCY_N is a
+    // misconfiguration, not an assumed HUF account - RealAdsSource::fromConfig()
+    // throws rather than silently falling back (PLANNING_LOG.md 2026-10-20).
+    'currency' => env('ADS_API_CURRENCY_1'),
 ];
 
 $restAccounts = array_map(
@@ -15,7 +18,7 @@ $restAccounts = array_map(
         'id' => "real-account-{$n}",
         'api_key' => env("ADS_API_KEY_{$n}"),
         'label' => env("ADS_API_LABEL_{$n}"),
-        'currency' => env("ADS_API_CURRENCY_{$n}", 'HUF'),
+        'currency' => env("ADS_API_CURRENCY_{$n}"),
     ],
     range(2, (int) env('ADS_MAX_ACCOUNTS', 20))
 );
@@ -31,9 +34,9 @@ return [
     // account-to-industry mapping and never shown to the user), its own API
     // key, an optional label shown on the dashboard instead of the account's
     // real name (falls back to "Real Account #N", see
-    // RealAdsSource::fromConfig()), and its currency (defaults to HUF;
+    // RealAdsSource::fromConfig()), and its currency - required, no default:
     // GET /ad_account/insights doesn't return this, so it must be set
-    // manually from that account's own currency_code - see GET /ad_account).
+    // manually from that account's own currency_code (see GET /ad_account).
     // A slot with no key configured is skipped entirely - the dashboard runs
     // fine with however many of these are currently set. ADS_MAX_ACCOUNTS
     // (default 20) bounds how high the scan for ADS_API_KEY_N goes; raise it
