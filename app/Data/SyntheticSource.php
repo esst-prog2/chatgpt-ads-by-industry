@@ -18,7 +18,8 @@ final class SyntheticSource implements PerformanceSource
     //   Education & Careers reals: per-campaign daily impressions 118-1548,
     //     CTR 0.83-1.33%, CPC 309-438 HUF.
     //   Professional Services reals: per-campaign daily impressions 1470-2949,
-    //     CTR 1.00-1.29%, CPC 253 HUF (GLS) / 1.33 EUR ~ 532 HUF-equivalent (Intren).
+    //     CTR 1.00-1.29%, CPC 253 HUF (Professional Services Partner A) / 1.33 EUR
+//     ~ 532 HUF-equivalent (Professional Services B).
     //   Health reals: per-campaign daily impressions 824-1884, CTR 1.26-1.54%,
     //     CPC 236-238 HUF.
     // All synthetic accounts are HUF, for simplicity - see PLANNING_LOG.md.
