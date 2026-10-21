@@ -81,7 +81,7 @@ class DashboardTest extends TestCase
 
     public function test_adding_a_real_account_adds_to_its_industrys_existing_synthetic_points(): void
     {
-        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key']]]);
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'currency' => 'HUF']]]);
         $yesterday = CarbonImmutable::yesterday()->toDateString();
         Http::fake(['*' => Http::response(['data' => [$this->realRow($yesterday)], 'has_more' => false])]);
 
@@ -111,7 +111,7 @@ class DashboardTest extends TestCase
 
             public function records(string $from, string $to): array
             {
-                return [new PerformanceRecord('a1', 'c1', 'C1', '2026-09-20', 100, 5, 1.0)];
+                return [new PerformanceRecord('a1', 'c1', 'C1', '2026-09-20', 100, 5, 1.0, 'HUF')];
             }
         };
         $this->app->instance(DashboardService::class, new DashboardService([$source], new IndustryMapping(['a1' => 'Health', 'b1' => 'Automotive'])));
@@ -134,7 +134,7 @@ class DashboardTest extends TestCase
 
     public function test_dashboard_still_loads_synthetic_accounts_when_a_configured_real_key_is_rejected(): void
     {
-        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'rejected']]]);
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'rejected', 'currency' => 'HUF']]]);
         Http::fake(['*' => Http::response([], 401)]);
         $this->get('/')->assertOk()
             ->assertSee('The Real account could not be loaded')
@@ -147,7 +147,7 @@ class DashboardTest extends TestCase
         // design, so one bad source doesn't take down the whole dashboard),
         // but that must never mean the real error vanishes - it still has to
         // reach the log, not just the generic user-facing notice.
-        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'rejected']]]);
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'rejected', 'currency' => 'HUF']]]);
         Http::fake(['*' => Http::response([], 401)]);
 
         Log::shouldReceive('channel')->andReturnSelf();
@@ -168,7 +168,7 @@ class DashboardTest extends TestCase
     {
         // Education & Careers always has its 2 synthetic accounts (syn-edu-1/2)
         // plus however many real accounts are configured - here just one.
-        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'label' => 'Education Partner A']]]);
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'label' => 'Education Partner A', 'currency' => 'HUF']]]);
         $yesterday = CarbonImmutable::yesterday()->toDateString();
         Http::fake(['*' => Http::response(['data' => [$this->realRow($yesterday)], 'has_more' => false])]);
 
@@ -193,7 +193,7 @@ class DashboardTest extends TestCase
 
     public function test_real_account_and_campaign_names_are_anonymized_everywhere(): void
     {
-        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key']]]);
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'currency' => 'HUF']]]);
         $yesterday = CarbonImmutable::yesterday()->toDateString();
         Http::fake(['*' => Http::response(['data' => [$this->realRow($yesterday)], 'has_more' => false])]);
 
@@ -204,8 +204,8 @@ class DashboardTest extends TestCase
     public function test_two_real_education_accounts_aggregate_with_weighted_ctr_and_cpc(): void
     {
         config(['ads.accounts' => [
-            ['id' => 'real-account-1', 'api_key' => 'key-one', 'label' => 'Education Partner A'],
-            ['id' => 'real-account-2', 'api_key' => 'key-two', 'label' => 'Education Partner B'],
+            ['id' => 'real-account-1', 'api_key' => 'key-one', 'label' => 'Education Partner A', 'currency' => 'HUF'],
+            ['id' => 'real-account-2', 'api_key' => 'key-two', 'label' => 'Education Partner B', 'currency' => 'HUF'],
         ]]);
         $yesterday = CarbonImmutable::yesterday()->toDateString();
         // Deliberately different CTR/CPC per account so a naive average-of-CTRs
@@ -278,8 +278,8 @@ class DashboardTest extends TestCase
     public function test_the_two_real_education_accounts_own_weighted_ctr_and_cpc_for_sept_8_to_21(): void
     {
         config(['ads.accounts' => [
-            ['id' => 'real-account-1', 'api_key' => 'key-one', 'label' => 'Education Partner A'],
-            ['id' => 'real-account-2', 'api_key' => 'key-two', 'label' => 'Education Partner B'],
+            ['id' => 'real-account-1', 'api_key' => 'key-one', 'label' => 'Education Partner A', 'currency' => 'HUF'],
+            ['id' => 'real-account-2', 'api_key' => 'key-two', 'label' => 'Education Partner B', 'currency' => 'HUF'],
         ]]);
         Http::fake([
             '*' => function ($request) {
@@ -374,7 +374,7 @@ class DashboardTest extends TestCase
         // must be identical whether its synthetic siblings exist or not, since
         // accountTotals groups strictly by account id (syn-* ids never collide
         // with real-account-*) - only the industry-level total combines them.
-        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'label' => 'Education Partner A']]]);
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'label' => 'Education Partner A', 'currency' => 'HUF']]]);
         $yesterday = CarbonImmutable::yesterday()->toDateString();
         Http::fake(['*' => Http::response(['data' => [$this->realRow($yesterday, imp: 777, clk: 13, spend: 1234.0)], 'has_more' => false])]);
 
