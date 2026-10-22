@@ -4,6 +4,14 @@
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Brand palette - see DESIGN_AGENT.md */
+    --color-brand-blue: #0600FF;
+    --color-brand-orange: #FF9100;
+    --color-brand-green: #02B77F;
+    --color-brand-cyan: #04A5BA;
+    --color-brand-purple: #5B148B;
+    --color-brand-navy: #19095B;
 }
