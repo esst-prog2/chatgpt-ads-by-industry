@@ -4,32 +4,63 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ChatGPT Ads Industry Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg:#f7f7f8; --fg:#1d1d1f; --muted:#6b6b70; --card:#fff; --line:#e2e2e6; --accent:#10a37f; --warn:#b45309; --err:#b91c1c; }
-        @media (prefers-color-scheme: dark) { :root { --bg:#161618; --fg:#f2f2f3; --muted:#a0a0a8; --card:#212124; --line:#34343a; --accent:#34d3a8; --warn:#fbbf24; --err:#f87171; } }
+        /* Brand palette - see DESIGN_AGENT.md. Light theme is the brand default;
+           the dark-mode block keeps the existing OS-preference support, retuned
+           to the same navy/blue family instead of the old unbranded teal. */
+        :root { --bg:#F8FAFC; --fg:#19095B; --muted:#6E6B85; --card:#FFFFFF; --line:#E2E8F0; --accent:#0600FF; --accent-hover:#0500CC; --accent-contrast:#FFFFFF; --success:#02B77F; --success-contrast:#19095B; --purple:#5B148B; --purple-contrast:#FFFFFF; --warn:#FF9100; --err:#B91C1C; }
+        @media (prefers-color-scheme: dark) { :root { --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73; --accent:#7C83FF; --accent-hover:#959AFF; --accent-contrast:#19095B; --success:#34d3a8; --success-contrast:#19095B; --purple:#8A4FC4; --purple-contrast:#FFFFFF; --warn:#fbbf24; --err:#f87171; } }
         * { box-sizing: border-box; }
-        body { margin:0; padding:24px 16px; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+        body { margin:0; padding:24px 16px; background:var(--bg); color:var(--fg); font-family:'Montserrat', ui-sans-serif, system-ui, sans-serif; font-weight:300; font-size:15px; line-height:1.5; }
         main { max-width:1000px; margin:0 auto; }
-        h1 { font-size:22px; margin:0 0 16px; } h2 { font-size:17px; margin:0 0 12px; }
+        h1, h2, strong { font-weight:700; color:var(--fg); }
+        h1 { font-size:22px; margin:0; } h2 { font-size:17px; margin:0 0 12px; }
+        .site-header { display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin:0 0 28px; }
+        .site-header .logo { height:56px; width:auto; object-fit:contain; margin:4px 0; }
         .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
         form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
         label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
-        input, select, button { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
-        button { background:var(--accent); color:#fff; border-color:var(--accent); cursor:pointer; }
+        input, select, button {
+            font:inherit; box-sizing:border-box; height:38px; padding:0 10px; margin:0;
+            border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg);
+            line-height:36px; vertical-align:middle;
+            transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease, transform .05s ease;
+        }
+        input:hover, select:hover { border-color:var(--accent); }
+        input:focus-visible, select:focus-visible { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+        button { background:var(--accent); color:var(--accent-contrast); border-color:var(--accent); font-weight:700; cursor:pointer; }
+        button:hover:not(:disabled) { background:var(--accent-hover); border-color:var(--accent-hover); }
+        button:active:not(:disabled) { background:var(--success); border-color:var(--success); color:var(--success-contrast); transform:translateY(1px); }
+        button:focus-visible { outline:3px solid var(--warn); outline-offset:2px; }
+        button:disabled { opacity:.65; cursor:progress; }
         .notice { border-left:4px solid var(--warn); } .error { border-left:4px solid var(--err); }
         table { width:100%; border-collapse:collapse; font-size:14px; }
         th, td { text-align:right; padding:6px 8px; border-bottom:1px solid var(--line); } th:first-child, td:first-child { text-align:left; }
-        .tag { font-size:12px; padding:1px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
-        .tag.real { color:var(--accent); border-color:var(--accent); }
+        th { font-weight:700; }
+        tbody tr:hover { background:var(--bg); }
+        tr.active td:first-child a { color:var(--success); font-weight:700; }
+        .tag { font-size:12px; font-weight:700; padding:2px 10px; border-radius:99px; border:1px solid transparent; }
+        .tag.real { background:var(--success); color:var(--success-contrast); }
+        .tag.synthetic { background:var(--purple); color:var(--purple-contrast); }
         .chart-wrap { position:relative; height:340px; }
         .table-scroll { overflow-x:auto; }
-        a { color:var(--accent); }
+        a { color:var(--accent); text-decoration:none; transition:color .15s ease; }
+        a:hover { color:var(--warn); text-decoration:underline; }
+        a:active { color:var(--success); }
+        a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
         .muted { color:var(--muted); }
+        .empty-state { color:var(--muted); text-align:center; padding:20px; margin:0; border:1px dashed var(--line); border-radius:10px; }
     </style>
 </head>
 <body>
 <main>
-    <h1>ChatGPT Ads Industry Dashboard</h1>
+    <header class="site-header">
+        <img class="logo" src="{{ asset('images/brand-logo.png') }}" alt="Intren">
+        <h1>ChatGPT Ads Industry Dashboard</h1>
+    </header>
 
     @php($metricLabels = ['impressions' => 'Impressions', 'clicks' => 'Clicks', 'spend' => 'Spend', 'ctr' => 'CTR', 'cpc' => 'CPC'])
     {{--
@@ -71,7 +102,7 @@
         <h2>{{ $metricLabels[$metric] }} per campaign, by industry</h2>
         <div class="chart-wrap"><canvas id="boxplot" aria-label="Box plot of {{ $metric }} per campaign by industry"></canvas></div>
         @php($empty = array_keys(array_filter($boxPlot, fn ($v) => count($v) === 0)))
-        @if ($empty)<p class="muted">No campaign data in this range for: {{ implode(', ', $empty) }}.</p>@endif
+        @if ($empty)<p class="empty-state">No campaign data in this range for: {{ implode(', ', $empty) }}.</p>@endif
     </div>
 
     <div class="card table-scroll">
@@ -81,7 +112,7 @@
             <tbody>
             @foreach ($industries as $i)
                 @php($t = $industryTotals[$i] ?? null)
-                <tr>
+                <tr @class(['active' => $i === $selectedIndustry])>
                     <td><a href="/?{{ http_build_query(['from' => $from, 'to' => $to, 'metric' => $metric, 'industry' => $i]) }}">{{ $i }}</a></td>
                     @if ($t)
                         <td>{{ number_format($t['impressions']) }}</td><td>{{ number_format($t['clicks']) }}</td>
@@ -104,7 +135,7 @@
                 <tbody>
                 @foreach ($drilldown as $a)
                     <tr>
-                        <td><strong>{{ $a['name'] }}</strong> <span class="tag {{ $a['label'] === 'Real' ? 'real' : '' }}">{{ $a['label'] }}</span></td>
+                        <td><strong>{{ $a['name'] }}</strong> <span class="tag {{ strtolower($a['label']) }}">{{ $a['label'] }}</span></td>
                         @if ($a['totals'])
                             <td>{{ number_format($a['totals']['impressions']) }}</td><td>{{ number_format($a['totals']['clicks']) }}</td>
                             <td>{{ number_format($displaySpend($a['totals'])) }} {{ $a['totals']['currency'] }}</td><td>{{ $a['totals']['ctr'] === null ? '–' : number_format($a['totals']['ctr'] * 100, 2).'%' }}</td>
@@ -126,14 +157,23 @@
             </table>
         </div>
     @else
-        <p class="muted">Select an industry above to see its accounts and campaigns.</p>
+        <div class="card"><p class="empty-state">Select an industry above to see its accounts and campaigns.</p></div>
     @endif
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.4.4/build/index.umd.min.js"></script>
 <script>
-    document.getElementById('metric').addEventListener('change', () => document.getElementById('filters').submit());
+    // Full-page GET navigation has no built-in loading indicator, so give explicit
+    // feedback (disabled button + "Loading…" label) for the moment between submit
+    // and the next page actually arriving.
+    const filtersForm = document.getElementById('filters');
+    const updateButton = filtersForm.querySelector('button[type="submit"]');
+    filtersForm.addEventListener('submit', () => {
+        updateButton.disabled = true;
+        updateButton.textContent = 'Loading…';
+    });
+    document.getElementById('metric').addEventListener('change', () => filtersForm.requestSubmit());
     const plot = @json($boxPlot);
     const pointLabels = @json($boxPlotLabels);
     const metric = @json($metric);
@@ -177,10 +217,10 @@
     canvas.addEventListener('mouseleave', () => { hoverY = null; });
 
     if (window.Chart && Chart.registry.getController('boxplot')) {
-        const accent = dark ? '#5eead4' : '#0d8f6e';
-        const fill = dark ? 'rgba(94,234,212,0.45)' : 'rgba(16,163,127,0.35)';
-        const gridColor = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
-        const tickColor = dark ? '#e5e7eb' : '#3f3f46';
+        const accent = dark ? '#7C83FF' : '#0600FF';
+        const fill = dark ? 'rgba(124,131,255,0.45)' : 'rgba(6,0,255,0.22)';
+        const gridColor = dark ? 'rgba(255,255,255,0.12)' : 'rgba(25,9,91,0.08)';
+        const tickColor = dark ? '#e5e7eb' : '#19095B';
 
         new Chart(canvas, {
             type: 'boxplot',
@@ -192,12 +232,12 @@
                     backgroundColor: fill,
                     borderColor: accent,
                     borderWidth: 2,
-                    medianColor: dark ? '#ffffff' : '#0b3b2e',
+                    medianColor: dark ? '#ffffff' : '#19095B',
                     // Only true outliers (beyond 1.5x IQR from Q1/Q3) are drawn as points;
                     // itemRadius: 0 hides the raw per-campaign scatter the box already summarizes.
                     itemRadius: 0,
                     outlierBackgroundColor: accent,
-                    outlierBorderColor: dark ? '#ffffff' : '#0b3b2e',
+                    outlierBorderColor: dark ? '#ffffff' : '#19095B',
                     outlierRadius: 5,
                 }],
             },
