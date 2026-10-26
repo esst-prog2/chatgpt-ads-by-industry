@@ -11,15 +11,41 @@
         /* Brand palette - see DESIGN_AGENT.md. Light theme is the brand default;
            the dark-mode block keeps the existing OS-preference support, retuned
            to the same navy/blue family instead of the old unbranded teal. */
-        :root { --bg:#F8FAFC; --fg:#19095B; --muted:#6E6B85; --card:#FFFFFF; --line:#E2E8F0; --accent:#0600FF; --accent-hover:#0500CC; --accent-contrast:#FFFFFF; --success:#02B77F; --success-contrast:#19095B; --purple:#5B148B; --purple-contrast:#FFFFFF; --warn:#FF9100; --err:#B91C1C; }
-        @media (prefers-color-scheme: dark) { :root { --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73; --accent:#7C83FF; --accent-hover:#959AFF; --accent-contrast:#19095B; --success:#34d3a8; --success-contrast:#19095B; --purple:#8A4FC4; --purple-contrast:#FFFFFF; --warn:#fbbf24; --err:#f87171; } }
+        :root {
+            --bg:#F8FAFC; --fg:#19095B; --muted:#6E6B85; --card:#FFFFFF; --line:#E2E8F0;
+            --accent:#0600FF; --accent-hover:#0500CC; --accent-contrast:#FFFFFF;
+            --success:#02B77F; --success-contrast:#19095B; --purple:#5B148B;
+            --warn:#FF9100; --err:#D7263D; --nav-inactive:#19095B;
+            --chart-accent:#0600FF; --chart-fill:rgba(6,0,255,0.22); --chart-grid:rgba(25,9,91,0.08);
+            --chart-tick:#19095B; --chart-median:#19095B;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73;
+                --accent:#7C83FF; --accent-hover:#959AFF; --accent-contrast:#19095B;
+                --success:#34d3a8; --success-contrast:#19095B; --purple:#C090E0;
+                --warn:#FF9100; --err:#FF6B81; --nav-inactive:#94A3B8;
+                --chart-accent:#7C83FF; --chart-fill:rgba(124,131,255,0.45); --chart-grid:rgba(255,255,255,0.12);
+                --chart-tick:#e5e7eb; --chart-median:#ffffff;
+            }
+        }
         * { box-sizing: border-box; }
         body { margin:0; padding:24px 16px; background:var(--bg); color:var(--fg); font-family:'Montserrat', ui-sans-serif, system-ui, sans-serif; font-weight:300; font-size:15px; line-height:1.5; }
         main { max-width:1000px; margin:0 auto; }
         h1, h2, strong { font-weight:700; color:var(--fg); }
         h1 { font-size:22px; margin:0; } h2 { font-size:17px; margin:0 0 12px; }
-        .site-header { display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin:0 0 28px; }
-        .site-header .logo { height:56px; width:auto; object-fit:contain; margin:4px 0; }
+        .site-header { display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin:0 0 28px; }
+        .site-header .logo { height:64px; width:auto; object-fit:contain; margin:4px 0; }
+        .site-header h1 { flex:1; text-align:right; }
+        /* Dynamic dark-mode logo swap (CSS-only, matches the rest of the page's
+           prefers-color-scheme approach): the colored logo is for light
+           backgrounds, logo_fekvő-09.png is the white/light variant for dark
+           backgrounds - only one of the two is ever displayed. */
+        .site-header .logo-dark { display:none; }
+        @media (prefers-color-scheme: dark) {
+            .site-header .logo-light { display:none; }
+            .site-header .logo-dark { display:inline-block; }
+        }
         .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
         form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
         label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
@@ -41,15 +67,17 @@
         th, td { text-align:right; padding:6px 8px; border-bottom:1px solid var(--line); } th:first-child, td:first-child { text-align:left; }
         th { font-weight:700; }
         tbody tr:hover { background:var(--bg); }
-        tr.active td:first-child a { color:var(--success); font-weight:700; }
-        .tag { font-size:12px; font-weight:700; padding:2px 10px; border-radius:99px; border:1px solid transparent; }
-        .tag.real { background:var(--success); color:var(--success-contrast); }
-        .tag.synthetic { background:var(--purple); color:var(--purple-contrast); }
+        tr.active td:first-child a { color:var(--accent); font-weight:700; }
+        .tag { font-size:12px; font-weight:700; padding:1px 8px; border-radius:99px; border:1px solid transparent; background:transparent; }
+        .tag.real { color:var(--success); border-color:var(--success); }
+        .tag.synthetic { color:var(--purple); border-color:var(--purple); }
         .chart-wrap { position:relative; height:340px; }
         .table-scroll { overflow-x:auto; }
-        a { color:var(--accent); text-decoration:none; transition:color .15s ease; }
+        /* Industry links: the persistent selection state (which industry is
+           drilled into) is blue-vs-navy per DESIGN_AGENT.md, not the usual
+           link blue everywhere - see tr.active above for the selected one. */
+        a { color:var(--nav-inactive); text-decoration:none; transition:color .15s ease; }
         a:hover { color:var(--warn); text-decoration:underline; }
-        a:active { color:var(--success); }
         a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
         .muted { color:var(--muted); }
         .empty-state { color:var(--muted); text-align:center; padding:20px; margin:0; border:1px dashed var(--line); border-radius:10px; }
@@ -58,7 +86,8 @@
 <body>
 <main>
     <header class="site-header">
-        <img class="logo" src="{{ asset('images/brand-logo.png') }}" alt="Intren">
+        <img class="logo logo-light" src="{{ asset('images/brand-logo.png') }}" alt="Intren">
+        <img class="logo logo-dark" src="{{ asset('images/logo_fekvő-09.png') }}" alt="Intren">
         <h1>ChatGPT Ads Industry Dashboard</h1>
     </header>
 
@@ -178,7 +207,6 @@
     const pointLabels = @json($boxPlotLabels);
     const metric = @json($metric);
     const industryNames = Object.keys(plot);
-    const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     const axisTitle = { impressions: 'Impressions', clicks: 'Clicks', spend: 'Spend (HUF)', ctr: 'CTR (%)', cpc: 'CPC (HUF)' }[metric];
     const isCurrency = metric === 'spend' || metric === 'cpc';
@@ -217,10 +245,17 @@
     canvas.addEventListener('mouseleave', () => { hoverY = null; });
 
     if (window.Chart && Chart.registry.getController('boxplot')) {
-        const accent = dark ? '#7C83FF' : '#0600FF';
-        const fill = dark ? 'rgba(124,131,255,0.45)' : 'rgba(6,0,255,0.22)';
-        const gridColor = dark ? 'rgba(255,255,255,0.12)' : 'rgba(25,9,91,0.08)';
-        const tickColor = dark ? '#e5e7eb' : '#19095B';
+        // Single source of truth for chart colors: the same --chart-* custom
+        // properties the :root/dark-mode CSS already defines, read live instead
+        // of duplicating each hex here - a palette change only has to happen
+        // in the CSS now.
+        const rootStyle = getComputedStyle(document.documentElement);
+        const cssVar = (name) => rootStyle.getPropertyValue(name).trim();
+        const accent = cssVar('--chart-accent');
+        const fill = cssVar('--chart-fill');
+        const gridColor = cssVar('--chart-grid');
+        const tickColor = cssVar('--chart-tick');
+        const medianColor = cssVar('--chart-median');
 
         new Chart(canvas, {
             type: 'boxplot',
@@ -232,12 +267,12 @@
                     backgroundColor: fill,
                     borderColor: accent,
                     borderWidth: 2,
-                    medianColor: dark ? '#ffffff' : '#19095B',
+                    medianColor: medianColor,
                     // Only true outliers (beyond 1.5x IQR from Q1/Q3) are drawn as points;
                     // itemRadius: 0 hides the raw per-campaign scatter the box already summarizes.
                     itemRadius: 0,
                     outlierBackgroundColor: accent,
-                    outlierBorderColor: dark ? '#ffffff' : '#19095B',
+                    outlierBorderColor: medianColor,
                     outlierRadius: 5,
                 }],
             },
