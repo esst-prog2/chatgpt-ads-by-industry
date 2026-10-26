@@ -56,13 +56,57 @@ Maintain high contrast for text and interactive elements over both.
 
 - Brand: **Intren** - this is the dashboard's own product/tool identity
   (the team building and operating this internal tool), not an advertiser
-  client. Logo asset: `public/images/brand-logo.png`.
+  client. Logo assets:
+  - `public/images/brand-logo.png` - full-color landscape logo, for light
+    backgrounds.
+  - `public/images/logo_fekvő-09.png` - white/light landscape variant, for
+    dark backgrounds. Swapped in automatically via a `prefers-color-scheme:
+    dark` media query (two `<img>` tags, one hidden per mode) - no
+    JavaScript, since the page has no other dark-mode toggle mechanism to
+    hook into.
 - Maintain generous clear space around the logo; never stretch, recolor,
   or rotate it.
 - Maintain appropriate spacing and high contrast when placed over light
-  backgrounds (`#FFFFFF` / `#F8FAFC`).
+  backgrounds (`#FFFFFF` / `#F8FAFC`) or dark backgrounds (`#140B3C`,
+  section 6).
 
-## 6. Strict compliance
+## 6. Dark-mode palette (ratified 2026-10-26)
+
+Activated via `prefers-color-scheme: dark` (the dashboard has no manual
+theme toggle). Not a reinterpretation of the light palette - several
+tokens are distinct colors chosen for dark-background legibility, not
+just a lightened/darkened version of the light-mode hex.
+
+| Token | Light | Dark | Notes |
+|---|---|---|---|
+| `--bg` | `#F8FAFC` | `#140B3C` | Page background. Dark variant is a navy tone, not black. |
+| `--card` | `#FFFFFF` | `#1D1154` | Panel/card background. |
+| `--fg` | `#19095B` (Dark Navy) | `#F2F1FA` | Primary text. |
+| `--muted` | `#6E6B85` | `#B5B2CC` | Secondary text. |
+| `--line` | `#E2E8F0` | `#352A73` | Borders/dividers. |
+| `--accent` | `#0600FF` (Primary Blue) | `#7C83FF` | Links, primary actions, selected-industry link, chart accent. Dark variant is a lighter periwinkle - the literal Primary Blue is too dark to read against the dark navy background. |
+| `--success` | `#02B77F` (Success Green) | `#34d3a8` | Real-account badge, button `:active`. |
+| `--purple` | `#5B148B` (Purple Accent) | `#C090E0` | Synthetic-account badge. Dark variant is a lighter lavender for the same reason as `--accent`. |
+| `--warn` | `#FF9100` (Accent Orange) | `#FF9100` | Notice banners. Same hex in both modes - orange already reads clearly on both the light and dark backgrounds, so it doesn't need a dark-specific variant. |
+| `--err` | `#D7263D` | `#FF6B81` | Error banners. Not one of the 6 core brand colors (none of them read as "error") - a crimson chosen to sit comfortably next to Purple Accent and Accent Orange rather than a generic red. Dark variant is lighter for legibility on the dark navy background. |
+| `--nav-inactive` | `#19095B` (same as `--fg`) | `#94A3B8` | Inactive industry-link color (section on Industry Selection below). Deliberately **not** the same navy as `--fg` in dark mode - navy-on-navy would be unreadable against the `#140B3C` background, so inactive links get their own muted slate-blue instead of reusing the Dark Navy brand text color. |
+
+**Industry selection/navigation**: the currently-selected industry link is
+always `--accent` (bright blue) bold; every inactive industry link is
+`--nav-inactive`. In light mode this is literally Dark Navy per the brand
+palette; in dark mode it's the muted slate-blue above, not navy, for the
+contrast reason noted in the table.
+
+**Chart colors**: the box plot (Chart.js) reads `--chart-accent`,
+`--chart-fill`, `--chart-grid`, `--chart-tick`, `--chart-median` via
+`getComputedStyle` at render time rather than hardcoding hex per mode in
+JavaScript - these mirror `--accent`/`--fg` and exist as separate tokens
+only because the chart needs an rgba() fill and a couple of
+chart-specific shades (grid lines, tick labels) that the UI chrome
+doesn't otherwise use. A palette change only needs to happen in the CSS
+`:root` blocks; the JavaScript never hardcodes a color.
+
+## 7. Strict compliance
 
 - Follow the privacy mandates in `CLAUDE.md` without exception: never
   expose a real advertiser/client/partner name anywhere in the repo or UI.
