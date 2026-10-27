@@ -46,6 +46,18 @@
             .site-header .logo-light { display:none; }
             .site-header .logo-dark { display:inline-block; }
         }
+        .account-bar { display:flex; justify-content:flex-end; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin:-20px 0 20px; }
+        .account-bar a { color:var(--muted); text-decoration:none; }
+        .account-bar a:hover { color:var(--warn); text-decoration:underline; }
+        .account-bar .logout-button,
+        .account-bar .logout-button:hover,
+        .account-bar .logout-button:active,
+        .account-bar .logout-button:focus-visible {
+            background:none; border:none; outline:none; padding:0; margin:0; height:auto;
+            font:inherit; font-weight:inherit; color:var(--muted); cursor:pointer; transform:none;
+        }
+        .account-bar .logout-button:hover { color:var(--warn); text-decoration:underline; }
+        .account-bar .logout-button:focus-visible { text-decoration:underline; color:var(--accent); }
         .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
         form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
         label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
@@ -90,6 +102,18 @@
         <img class="logo logo-dark" src="{{ asset('images/logo_fekvő-09.png') }}" alt="Intren">
         <h1>ChatGPT Ads Industry Dashboard</h1>
     </header>
+    <div class="account-bar">
+        Signed in as {{ auth()->user()->email }}
+        @if (auth()->user()->isAdmin())
+            <span>&middot;</span>
+            <a href="{{ route('admin.users') }}">Manage Access</a>
+        @endif
+        <span>&middot;</span>
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="logout-button">Logout</button>
+        </form>
+    </div>
 
     @php($metricLabels = ['impressions' => 'Impressions', 'clicks' => 'Clicks', 'spend' => 'Spend', 'ctr' => 'CTR', 'cpc' => 'CPC'])
     {{--

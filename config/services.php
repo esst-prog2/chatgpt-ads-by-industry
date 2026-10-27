@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    // Google Sign-In (Socialite). allowed_domain restricts login to one
+    // company Google Workspace domain - enforced server-side in the OAuth
+    // callback, not just via the (spoofable) 'hd' request parameter.
+    // admin_emails seeds a user's role as Admin the FIRST time they ever log
+    // in, nothing more - it is not re-applied on later logins, so an admin's
+    // role changes (made via the access panel) always stick even if the
+    // email stays in this list. See PLANNING_LOG.md 2026-10-27.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'allowed_domain' => env('ALLOWED_GOOGLE_DOMAIN'),
+        'admin_emails' => array_filter(array_map('trim', explode(',', env('ADMIN_EMAILS', '')))),
+    ],
+
 ];

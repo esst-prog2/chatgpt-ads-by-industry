@@ -6,15 +6,34 @@ use App\Data\IndustryMapping;
 use App\Data\PerformanceRecord;
 use App\Data\PerformanceSource;
 use App\Data\SyntheticSource;
+use App\Models\User;
 use App\Services\Aggregator;
 use App\Services\DashboardService;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
+    // RefreshDatabase: nothing in this project ever wrote to a real DB table
+    // before auth existed (SESSION_DRIVER=array avoids the sessions table
+    // too), so the test DB was never migrated - actingAs()/User::factory()
+    // below needs a real users table, not just a mocked session.
+    use RefreshDatabase;
+
+    // '/' requires auth since 2026-10-27 (PLANNING_LOG.md) - every test in
+    // this class exercises the dashboard route itself, not the login/role
+    // system, so a plain Viewer is the right default here; role-specific
+    // behavior (Admin-only access panel, etc.) gets its own dedicated tests.
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAs(User::factory()->create());
+    }
+
     private function realRow(string $date, int $imp = 1000, int $clk = 20, float $spend = 10.0): array
     {
         return ['campaign_id' => 'cmpn_1', 'campaign_name' => 'Spring launch', 'readable_time' => $date, 'impressions' => $imp, 'clicks' => $clk, 'spend' => $spend];
