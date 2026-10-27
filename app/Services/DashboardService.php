@@ -50,21 +50,7 @@ final class DashboardService
         $campaigns = $this->aggregator->campaignTotals($records);
         $accountTotals = $this->aggregator->accountTotals($campaigns);
         $industryTotals = $this->aggregator->industryTotals($campaigns, $this->mapping);
-        $boxValues = $this->aggregator->boxPlotValues($campaigns, $this->mapping, $metric);
-
-        // Mirrors Aggregator::boxPlotValues' order and null-skip so index i here
-        // matches index i in $boxValues, letting the chart identify a hovered outlier
-        // by its (already-anonymized, for the real source) account and campaign name.
-        $boxLabels = [];
-        foreach ($campaigns as $c) {
-            if ($c[$metric] === null) {
-                continue;
-            }
-            $boxLabels[$this->mapping->industryOf($c['account'])][] = [
-                'account' => $names[$c['account']] ?? $c['account'],
-                'campaign' => $c['campaign'],
-            ];
-        }
+        $boxStats = $this->aggregator->boxPlotStats($campaigns, $this->mapping, $metric);
 
         $known = array_unique(array_map(fn ($id) => $this->mapping->industryOf($id), array_keys($labels)));
         $industries = array_values(array_filter(Industries::ALL, fn ($i) => in_array($i, $known, true)));
@@ -93,8 +79,7 @@ final class DashboardService
             'notices' => $notices,
             'industries' => $industries,
             'industryTotals' => $industryTotals,
-            'boxPlot' => array_combine($industries, array_map(fn ($i) => $boxValues[$i] ?? [], $industries)),
-            'boxPlotLabels' => array_combine($industries, array_map(fn ($i) => $boxLabels[$i] ?? [], $industries)),
+            'boxPlot' => array_combine($industries, array_map(fn ($i) => $boxStats[$i] ?? [], $industries)),
             'selectedIndustry' => $drilldown === null ? null : $industry,
             'drilldown' => $drilldown,
         ];

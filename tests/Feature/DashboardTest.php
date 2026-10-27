@@ -6,6 +6,7 @@ use App\Data\IndustryMapping;
 use App\Data\PerformanceRecord;
 use App\Data\PerformanceSource;
 use App\Data\SyntheticSource;
+use App\Services\Aggregator;
 use App\Services\DashboardService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
@@ -66,17 +67,18 @@ class DashboardTest extends TestCase
             ->assertViewHas('to', $to->toDateString());
     }
 
-    public function test_box_plot_shows_all_three_synthetic_backed_industries_even_with_no_real_key(): void
+    public function test_box_plot_shows_all_five_synthetic_backed_industries_even_with_no_real_key(): void
     {
         // Synthetic data exists only for industries that have a real account
-        // (Education & Careers, Professional Services, Health) - but it doesn't
-        // require a *currently configured* key to appear, since it's not tied
-        // to any one real account's availability.
+        // (Education & Careers, Professional Services, Health, Travel &
+        // Hospitality, Software & Technology) - but it doesn't require a
+        // *currently configured* key to appear, since it's not tied to any
+        // one real account's availability.
         config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
         $box = $this->get('/')->viewData('boxPlot');
 
-        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health'], array_keys($box));
-        $this->assertCount(5, $box['Education & Careers']); // syn-edu-1 (2 campaigns) + syn-edu-2 (3)
+        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality', 'Software & Technology'], array_keys($box));
+        $this->assertCount(5, $box['Education & Careers']['items']); // syn-edu-1 (2 campaigns) + syn-edu-2 (3)
     }
 
     public function test_adding_a_real_account_adds_to_its_industrys_existing_synthetic_points(): void
@@ -87,8 +89,8 @@ class DashboardTest extends TestCase
 
         $box = $this->get('/')->viewData('boxPlot');
 
-        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health'], array_keys($box));
-        $this->assertCount(6, $box['Education & Careers']); // 5 synthetic + 1 real campaign
+        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality', 'Software & Technology'], array_keys($box));
+        $this->assertCount(6, $box['Education & Careers']['items']); // 5 synthetic + 1 real campaign
     }
 
     public function test_metric_switch_changes_plotted_values(): void
@@ -98,7 +100,46 @@ class DashboardTest extends TestCase
         $clicks = $this->get('/?metric=clicks')->viewData('boxPlot');
 
         $this->assertNotEquals($spend['Education & Careers'], $clicks['Education & Careers']);
-        $this->assertLessThan(1, max($this->get('/?metric=ctr')->viewData('boxPlot')['Education & Careers']));
+        $this->assertLessThan(1, $this->get('/?metric=ctr')->viewData('boxPlot')['Education & Careers']['max']);
+    }
+
+    /**
+     * Automated guardrail (PLANNING_LOG.md 2026-10-27): the box plot must
+     * never show a jarring orphan dot, for any industry or any metric - this
+     * walks every metric Aggregator::METRICS supports and checks every
+     * industry's box, failing loudly if a future change ever reintroduces
+     * Chart.js's default "beyond 1.5x IQR" outlier classification.
+     */
+    public function test_box_plot_data_never_contains_outliers_for_any_industry_or_metric(): void
+    {
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+
+        foreach (Aggregator::METRICS as $metric) {
+            $box = $this->get('/?metric='.$metric)->viewData('boxPlot');
+            foreach ($box as $industry => $stats) {
+                if ($stats === []) {
+                    continue; // no data for this industry/metric combination - nothing to assert
+                }
+                $this->assertSame([], $stats['outliers'], "{$industry}/{$metric} should never have outliers");
+            }
+        }
+    }
+
+    public function test_a_real_accounts_extreme_cpc_is_never_classified_as_an_outlier_next_to_its_synthetic_siblings(): void
+    {
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'currency' => 'HUF']]]);
+        $yesterday = CarbonImmutable::yesterday()->toDateString();
+        // Far beyond Education & Careers' synthetic siblings' own CPC range
+        // (roughly 300-460 HUF) - exactly the kind of point that a naive
+        // Tukey 1.5*IQR rule would flag as an outlier.
+        Http::fake(['*' => Http::response(['data' => [$this->realRow($yesterday, imp: 100, clk: 10, spend: 50000.0)], 'has_more' => false])]);
+
+        $stats = $this->get('/?metric=cpc')->viewData('boxPlot')['Education & Careers'];
+
+        $this->assertSame([], $stats['outliers']);
+        // The real account's own extreme CPC (5000 HUF) still shows - it's
+        // just inside the whisker, not flagged as a separate orphan dot.
+        $this->assertEquals(5000.0, $stats['whiskerMax']);
     }
 
     public function test_industry_without_data_shows_an_empty_state(): void

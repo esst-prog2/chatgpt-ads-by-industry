@@ -111,6 +111,64 @@ final class Aggregator
         return $values;
     }
 
+    /**
+     * Pre-computed box-plot statistics per industry, built on boxPlotValues().
+     * 'outliers' is always empty and the whiskers always span the true
+     * min/max of that industry's points - deliberately not Chart.js's default
+     * "beyond 1.5x IQR" rule. A handful of blended real+synthetic campaigns is
+     * too small a sample for that rule to mean "anomaly": it would flag an
+     * ordinary point (or a real account's genuinely different currency/scale)
+     * as a jarring orphan dot. An industry with no points for this metric
+     * gets [] (same as boxPlotValues(), so the Blade "no data" check and an
+     * empty box plot entry both still work unchanged).
+     *
+     * @param  array<string, array>  $campaignTotals
+     * @return array<string, array{min: float, max: float, q1: float, median: float, q3: float, mean: float, items: list<float>, outliers: array{}, whiskerMin: float, whiskerMax: float}|list<never>>
+     */
+    public function boxPlotStats(array $campaignTotals, IndustryMapping $mapping, string $metric): array
+    {
+        $values = $this->boxPlotValues($campaignTotals, $mapping, $metric);
+
+        return array_map(function (array $points) {
+            if ($points === []) {
+                return [];
+            }
+            sort($points);
+            $min = $points[0];
+            $max = $points[count($points) - 1];
+
+            return [
+                'min' => $min,
+                'max' => $max,
+                'q1' => $this->quantile($points, 0.25),
+                'median' => $this->quantile($points, 0.5),
+                'q3' => $this->quantile($points, 0.75),
+                'mean' => array_sum($points) / count($points),
+                'items' => $points,
+                'outliers' => [],
+                'whiskerMin' => $min,
+                'whiskerMax' => $max,
+            ];
+        }, $values);
+    }
+
+    /** Linear-interpolation quantile (matches numpy's/Excel PERCENTILE.INC's default method). @param  list<float|int>  $sorted  already sorted ascending */
+    private function quantile(array $sorted, float $p): float
+    {
+        $n = count($sorted);
+        if ($n === 1) {
+            return (float) $sorted[0];
+        }
+        $index = $p * ($n - 1);
+        $lower = (int) floor($index);
+        $upper = (int) ceil($index);
+        if ($lower === $upper) {
+            return (float) $sorted[$lower];
+        }
+
+        return $sorted[$lower] + ($sorted[$upper] - $sorted[$lower]) * ($index - $lower);
+    }
+
     /** @return array<string, array{impressions: int, clicks: int, spend: float, ctr: ?float, cpc: ?float, currency: string}> */
     private function sumBy(array $campaignTotals, callable $groupOf): array
     {

@@ -47,6 +47,8 @@ class DataSourcesTest extends TestCase
             'Education & Careers' => [309, 438],
             'Professional Services' => [253, 532],
             'Health' => [236, 238],
+            'Travel & Hospitality' => [1450, 1650],
+            'Software & Technology' => [820, 820],
         ];
 
         foreach ($records as $r) {
@@ -76,11 +78,11 @@ class DataSourcesTest extends TestCase
             $industries[$this->mapping()->industryOf($r->account)][$r->account] = true;
             $campaigns[$r->account][$r->campaignId] = true;
         }
-        // Education & Careers, Professional Services, Health only: synthetic
-        // data exists only for industries that have at least one real account
-        // (see account_industry.csv, PLANNING_LOG.md 2026-10-16).
+        // Synthetic data exists only for industries that have at least one
+        // real account (see account_industry.csv, PLANNING_LOG.md 2026-10-16;
+        // Travel & Hospitality and Software & Technology added 2026-10-27).
         $this->assertEqualsCanonicalizing(
-            ['Education & Careers', 'Professional Services', 'Health'],
+            ['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality', 'Software & Technology'],
             array_keys($industries)
         );
         foreach ($industries as $accounts) {
@@ -94,13 +96,13 @@ class DataSourcesTest extends TestCase
 
     public function test_every_industry_has_at_least_two_accounts_counting_real_and_synthetic(): void
     {
-        $realIds = ['real-account-1', 'real-account-2', 'real-account-3', 'real-account-4', 'real-account-5'];
+        $realIds = ['real-account-1', 'real-account-2', 'real-account-3', 'real-account-4', 'real-account-5', 'real-account-6', 'real-account-7'];
         $accounts = array_unique(array_merge(array_keys((new SyntheticSource(self::END))->accounts()), $realIds));
         $perIndustry = [];
         foreach ($accounts as $account) {
             $perIndustry[$this->mapping()->industryOf($account)][] = $account;
         }
-        $this->assertCount(3, $perIndustry);
+        $this->assertCount(5, $perIndustry);
         foreach ($perIndustry as $industry => $list) {
             $this->assertGreaterThanOrEqual(2, count($list), $industry);
         }
