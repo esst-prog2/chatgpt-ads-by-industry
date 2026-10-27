@@ -204,7 +204,6 @@
     });
     document.getElementById('metric').addEventListener('change', () => filtersForm.requestSubmit());
     const plot = @json($boxPlot);
-    const pointLabels = @json($boxPlotLabels);
     const metric = @json($metric);
     const industryNames = Object.keys(plot);
 
@@ -220,29 +219,7 @@
         const n = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(v);
         return isCurrency ? n + ' HUF' : n;
     }
-    // A hovered value (an outlier) doesn't say which account/campaign it came from;
-    // match it back to the closest value plotted for that industry to recover its
-    // (already-anonymized, for the real source) account and campaign name.
-    function campaignFor(industryIndex, value) {
-        const values = plot[industryNames[industryIndex]] || [];
-        const labels = pointLabels[industryNames[industryIndex]] || [];
-        let best = -1, bestDiff = Infinity;
-        values.forEach((v, i) => { const d = Math.abs(v - value); if (d < bestDiff) { bestDiff = d; best = i; } });
-        return best >= 0 ? labels[best] : null;
-    }
-
-    // Chart.js only reports "which box" was hovered (context.dataIndex), not which
-    // exact sub-element (the box body vs. one specific outlier dot) - context.raw for
-    // this library's boxplot controller is the plain input array, not a per-point
-    // value or stats object; the real stats live on context.element instead. To tell
-    // an outlier hover apart from a box-body hover, track the cursor's pixel position
-    // ourselves and compare it to each outlier's own pixel position.
-    let hoverY = null;
     const canvas = document.getElementById('boxplot');
-    canvas.addEventListener('mousemove', (evt) => {
-        hoverY = evt.clientY - canvas.getBoundingClientRect().top;
-    });
-    canvas.addEventListener('mouseleave', () => { hoverY = null; });
 
     if (window.Chart && Chart.registry.getController('boxplot')) {
         // Single source of truth for chart colors: the same --chart-* custom
@@ -268,12 +245,13 @@
                     borderColor: accent,
                     borderWidth: 2,
                     medianColor: medianColor,
-                    // Only true outliers (beyond 1.5x IQR from Q1/Q3) are drawn as points;
-                    // itemRadius: 0 hides the raw per-campaign scatter the box already summarizes.
+                    // Server-computed stats (Aggregator::boxPlotStats) force whiskers to
+                    // the true min/max and outliers to always be empty - a handful of
+                    // blended real+synthetic campaigns is too small a sample for the
+                    // library's default "beyond 1.5x IQR" rule to mean "anomaly" rather
+                    // than just an ordinary point. itemRadius: 0 hides the raw
+                    // per-campaign scatter the box already summarizes.
                     itemRadius: 0,
-                    outlierBackgroundColor: accent,
-                    outlierBorderColor: medianColor,
-                    outlierRadius: 5,
                 }],
             },
             options: {
@@ -292,24 +270,6 @@
                                 const el = context.element;
                                 const yScale = context.chart.scales.y;
                                 const toValue = (px) => yScale.getValueForPixel(px);
-                                const outlierPixels = el?.outliers || [];
-
-                                if (outlierPixels.length && hoverY !== null) {
-                                    let nearestPx = null, nearestDist = Infinity;
-                                    outlierPixels.forEach((px) => {
-                                        const d = Math.abs(px - hoverY);
-                                        if (d < nearestDist) { nearestDist = d; nearestPx = px; }
-                                    });
-                                    // Only treat it as "hovering that outlier" if the cursor is
-                                    // actually near its dot, not just anywhere in the box column.
-                                    if (nearestPx !== null && nearestDist <= 10) {
-                                        const value = toValue(nearestPx);
-                                        const info = campaignFor(context.dataIndex, value);
-                                        return info
-                                            ? [`Account: ${info.account}`, `Campaign: ${info.campaign}`, `Value: ${fmt(value)}`]
-                                            : `Value: ${fmt(value)}`;
-                                    }
-                                }
 
                                 return [
                                     `Max: ${fmt(toValue(el.max))}`,

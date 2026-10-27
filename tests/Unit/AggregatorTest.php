@@ -95,6 +95,45 @@ class AggregatorTest extends TestCase
         $this->assertSame(['Health' => [2.5]], $agg->boxPlotValues($totals, $mapping, 'cpc'));
     }
 
+    public function test_box_plot_stats_never_produce_outliers_even_for_a_textbook_outlier_shaped_dataset(): void
+    {
+        $agg = new Aggregator;
+        $mapping = new IndustryMapping(['a1' => 'Health']);
+        // Six tightly clustered CPC values plus one far outside them - under
+        // the usual Tukey 1.5*IQR rule this shape would flag 700 as an
+        // outlier. boxPlotStats() must never do that: whiskers always span
+        // the true min/max and 'outliers' is always empty.
+        $cpcs = [100.0, 105.0, 110.0, 108.0, 102.0, 98.0, 700.0];
+        $records = [];
+        foreach ($cpcs as $i => $cpc) {
+            $records[] = $this->rec('a1', "c{$i}", '2026-09-01', 100, 1, $cpc);
+        }
+        $totals = $agg->campaignTotals($records);
+
+        $stats = $agg->boxPlotStats($totals, $mapping, 'cpc')['Health'];
+
+        $this->assertSame([], $stats['outliers']);
+        $this->assertEquals(98.0, $stats['min']);
+        $this->assertEquals(700.0, $stats['max']);
+        $this->assertEquals(98.0, $stats['whiskerMin']);
+        $this->assertEquals(700.0, $stats['whiskerMax']);
+        $this->assertCount(7, $stats['items']);
+    }
+
+    public function test_box_plot_stats_omits_an_industry_with_no_matching_points_same_as_box_plot_values(): void
+    {
+        $agg = new Aggregator;
+        $mapping = new IndustryMapping(['a1' => 'Health']);
+        $totals = $agg->campaignTotals([$this->rec('a1', 'c1', '2026-09-01', 0, 0, 0.0)]); // no clicks -> no cpc
+
+        // Mirrors boxPlotValues()'s own contract exactly: an industry with no
+        // non-null points for this metric is absent from the map, not an
+        // empty-array entry - DashboardService supplies the [] default for
+        // every known industry on top of this, same as it already does for
+        // boxPlotValues().
+        $this->assertArrayNotHasKey('Health', $agg->boxPlotStats($totals, $mapping, 'cpc'));
+    }
+
     public function test_campaign_totals_keep_native_currency_and_also_expose_huf_normalized_figures(): void
     {
         $agg = new Aggregator(['HUF' => 1.0, 'EUR' => 400.0]);
