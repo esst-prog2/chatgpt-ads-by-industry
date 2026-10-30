@@ -21,6 +21,14 @@ class AuthTest extends TestCase
         config([
             'services.google.allowed_domain' => 'intren.hu',
             'services.google.admin_emails' => ['admin@intren.hu'],
+            // Dummy, deliberately not read from the real .env: redirect()
+            // only builds a URL locally (no network call), so these never
+            // need to be real credentials, and hardcoding them here keeps
+            // the test hermetic regardless of what's actually configured
+            // on whatever machine runs the suite.
+            'services.google.client_id' => 'test-client-id',
+            'services.google.client_secret' => 'test-client-secret',
+            'services.google.redirect' => 'http://localhost/auth/google/callback',
         ]);
     }
 
@@ -118,10 +126,48 @@ class AuthTest extends TestCase
         $response->assertRedirect('/login');
     }
 
+    public function test_logout_sets_the_force_reauth_flag_for_the_next_login_attempt(): void
+    {
+        $response = $this->actingAs(User::factory()->create())->post('/logout');
+
+        // Set on the FRESH post-logout session (logout() invalidates the old
+        // one first) - this is the session the next request actually sees,
+        // which is what assertSessionHas checks against here.
+        $response->assertSessionHas('force_google_reauth', true);
+    }
+
+    /**
+     * redirect() only builds a URL locally (session writes + http_build_query)
+     * and never makes a network call, so exercising the REAL Socialite driver
+     * here is safe and fast - Socialite::fake()'s FakeProvider::redirect()
+     * ignores with()/scopes entirely and always returns a fixed fake URL, so
+     * faking it would hide the exact logic this test exists to check.
+     */
+    public function test_redirect_includes_the_account_chooser_prompt_right_after_a_logout(): void
+    {
+        session(['force_google_reauth' => true]);
+
+        $response = $this->get('/auth/google/redirect');
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('prompt=select_account', $response->headers->get('Location'));
+        // One-shot: consumed by redirect(), so it doesn't force the chooser
+        // on every login attempt forever after a single logout.
+        $this->assertFalse(session()->has('force_google_reauth'));
+    }
+
+    public function test_redirect_does_not_force_the_prompt_on_an_ordinary_login(): void
+    {
+        $response = $this->get('/auth/google/redirect');
+
+        $response->assertRedirect();
+        $this->assertStringNotContainsString('prompt=', $response->headers->get('Location'));
+    }
+
     public function test_admin_panel_is_forbidden_for_a_viewer(): void
     {
         $this->actingAs(User::factory()->create(['role' => UserRole::Viewer]))
-            ->get('/admin/users')
+            ->get('/admin')
             ->assertForbidden();
     }
 
@@ -130,7 +176,7 @@ class AuthTest extends TestCase
         $admin = User::factory()->admin()->create();
         $other = User::factory()->create(['email' => 'other@intren.hu']);
 
-        $this->actingAs($admin)->get('/admin/users')
+        $this->actingAs($admin)->get('/admin')
             ->assertOk()
             ->assertSee($admin->email)
             ->assertSee('other@intren.hu');
@@ -177,5 +223,98 @@ class AuthTest extends TestCase
         $this->actingAs($admin1)->patch("/admin/users/{$admin2->id}/role", ['role' => 'viewer']);
 
         $this->assertSame(UserRole::Viewer, $admin2->fresh()->role);
+    }
+
+    public function test_an_admin_emails_protected_admin_cannot_be_demoted_by_another_admin(): void
+    {
+        $protected = User::factory()->admin()->create(['email' => 'admin@intren.hu']); // matches setUp()'s admin_emails
+        $otherAdmin = User::factory()->admin()->create();
+
+        $this->actingAs($otherAdmin)
+            ->patch("/admin/users/{$protected->id}/role", ['role' => 'viewer'])
+            ->assertSessionHasErrors('role');
+
+        $this->assertSame(UserRole::Admin, $protected->fresh()->role);
+    }
+
+    public function test_an_admin_emails_protected_admin_cannot_be_demoted_even_with_plenty_of_other_admins(): void
+    {
+        // Distinct from the last-admin guard: this must block regardless of
+        // how many OTHER admins exist, not just when it's the only one.
+        $protected = User::factory()->admin()->create(['email' => 'admin@intren.hu']);
+        $otherAdmin = User::factory()->admin()->create();
+        User::factory()->admin()->create();
+        User::factory()->admin()->create();
+
+        $this->actingAs($otherAdmin)->patch("/admin/users/{$protected->id}/role", ['role' => 'viewer']);
+
+        $this->assertSame(UserRole::Admin, $protected->fresh()->role);
+    }
+
+    public function test_admin_can_add_a_new_user_with_a_valid_domain_email(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/users', ['email' => 'new.person@intren.hu', 'role' => 'viewer'])
+            ->assertRedirect();
+
+        $created = User::where('email', 'new.person@intren.hu')->first();
+        $this->assertNotNull($created);
+        $this->assertSame(UserRole::Viewer, $created->role);
+        $this->assertNull($created->google_id); // inert until they actually sign in
+    }
+
+    public function test_admin_cannot_add_a_user_with_a_non_company_domain_email(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/users', ['email' => 'someone@gmail.com', 'role' => 'viewer'])
+            ->assertSessionHasErrors('email');
+
+        $this->assertSame(0, User::where('email', 'someone@gmail.com')->count());
+    }
+
+    public function test_adding_an_admin_emails_listed_address_forces_admin_role_regardless_of_the_form(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        // Form says viewer - admin_emails wins, same rule as a real login.
+        $this->actingAs($admin)->post('/admin/users', ['email' => 'admin@intren.hu', 'role' => 'viewer']);
+
+        $this->assertSame(UserRole::Admin, User::where('email', 'admin@intren.hu')->first()->role);
+    }
+
+    public function test_admin_cannot_add_a_duplicate_email(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->create(['email' => 'existing@intren.hu']);
+
+        $this->actingAs($admin)
+            ->post('/admin/users', ['email' => 'existing@intren.hu', 'role' => 'viewer'])
+            ->assertSessionHasErrors('email');
+    }
+
+    public function test_a_viewer_cannot_add_a_user_even_by_hitting_the_route_directly(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+
+        $this->actingAs($viewer)
+            ->post('/admin/users', ['email' => 'sneaky@intren.hu', 'role' => 'admin'])
+            ->assertForbidden();
+
+        $this->assertSame(0, User::where('email', 'sneaky@intren.hu')->count());
+    }
+
+    public function test_admin_panel_shows_both_tabs(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get('/admin')
+            ->assertOk()
+            ->assertSee('User Management')
+            ->assertSee('Ads Account Management')
+            ->assertSee('Coming soon');
     }
 }

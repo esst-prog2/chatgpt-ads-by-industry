@@ -181,6 +181,42 @@ class DashboardTest extends TestCase
         $response->assertSee('No campaign data in this range for: Automotive');
     }
 
+    public function test_industry_filter_dropdown_only_lists_industries_that_currently_have_data(): void
+    {
+        // A custom 3-account source/mapping, distinct from the 5 industries
+        // the rest of the app normally shows - proves the dropdown is built
+        // from whatever currently has accounts, not a hardcoded list.
+        $source = new class implements PerformanceSource
+        {
+            public function label(): string { return 'Synthetic'; }
+
+            public function accounts(): array { return ['a1' => 'Alpha', 'b1' => 'Beta', 'c1' => 'Gamma']; }
+
+            public function records(string $from, string $to): array
+            {
+                return [new PerformanceRecord('a1', 'c1', 'C1', '2026-09-20', 100, 5, 1.0, 'HUF')];
+            }
+        };
+        $this->app->instance(DashboardService::class, new DashboardService(
+            [$source],
+            new IndustryMapping(['a1' => 'Health', 'b1' => 'Automotive', 'c1' => 'Travel & Hospitality'])
+        ));
+
+        $response = $this->get('/?from=2026-09-20&to=2026-09-20')->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            ['Health', 'Automotive', 'Travel & Hospitality'],
+            $response->viewData('industries')
+        );
+        // The view must actually render $industries into visible options,
+        // not just receive the right data and silently drop it.
+        $response->assertSee('value="Health"', false);
+        $response->assertSee('value="Automotive"', false);
+        $response->assertSee('value="Travel &amp; Hospitality"', false);
+        $response->assertDontSee('value="Professional Services"', false);
+        $response->assertDontSee('value="Software &amp; Technology"', false);
+    }
+
     public function test_dashboard_loads_synthetic_accounts_without_a_notice_when_no_real_key_is_configured(): void
     {
         // RealAdsSource::fromConfig() skips a slot with no key entirely, so an

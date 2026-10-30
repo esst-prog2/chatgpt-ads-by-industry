@@ -18,6 +18,11 @@
             --warn:#FF9100; --err:#D7263D; --nav-inactive:#19095B;
             --chart-accent:#0600FF; --chart-fill:rgba(6,0,255,0.22); --chart-grid:rgba(25,9,91,0.08);
             --chart-tick:#19095B; --chart-median:#19095B;
+            {{-- Used only once an industry is actually selected (see the box-
+                 plot JS below): every OTHER industry's box fades to this
+                 neutral tone so the selected one visibly stands out, instead
+                 of all boxes competing in the same brand blue. --}}
+            --chart-muted-accent:#6E6B85; --chart-muted-fill:rgba(110,107,133,0.18); --chart-muted-median:#6E6B85;
         }
         @media (prefers-color-scheme: dark) {
             :root {
@@ -27,6 +32,7 @@
                 --warn:#FF9100; --err:#FF6B81; --nav-inactive:#94A3B8;
                 --chart-accent:#7C83FF; --chart-fill:rgba(124,131,255,0.45); --chart-grid:rgba(255,255,255,0.12);
                 --chart-tick:#e5e7eb; --chart-median:#ffffff;
+                --chart-muted-accent:#B5B2CC; --chart-muted-fill:rgba(181,178,204,0.22); --chart-muted-median:#B5B2CC;
             }
         }
         * { box-sizing: border-box; }
@@ -106,7 +112,7 @@
         Signed in as {{ auth()->user()->email }}
         @if (auth()->user()->isAdmin())
             <span>&middot;</span>
-            <a href="{{ route('admin.users') }}">Manage Access</a>
+            <a href="{{ route('admin.index') }}">Admin</a>
         @endif
         <span>&middot;</span>
         <form method="POST" action="{{ route('logout') }}">
@@ -146,7 +152,17 @@
                     @endforeach
                 </select>
             </label>
-            @if ($selectedIndustry)<input type="hidden" name="industry" value="{{ $selectedIndustry }}">@endif
+            <label>Industry
+                {{-- $industries is already filtered server-side (DashboardService)
+                     to only the industries that currently have at least one real
+                     or synthetic account with data - never a static list. --}}
+                <select name="industry" id="industry">
+                    <option value="" @selected(! $selectedIndustry)>All industries</option>
+                    @foreach ($industries as $i)
+                        <option value="{{ $i }}" @selected($i === $selectedIndustry)>{{ $i }}</option>
+                    @endforeach
+                </select>
+            </label>
             <button type="submit">Update</button>
         </form>
     </div>
@@ -227,8 +243,10 @@
         updateButton.textContent = 'Loading…';
     });
     document.getElementById('metric').addEventListener('change', () => filtersForm.requestSubmit());
+    document.getElementById('industry').addEventListener('change', () => filtersForm.requestSubmit());
     const plot = @json($boxPlot);
     const metric = @json($metric);
+    const selectedIndustry = @json($selectedIndustry);
     const industryNames = Object.keys(plot);
 
     const axisTitle = { impressions: 'Impressions', clicks: 'Clicks', spend: 'Spend (HUF)', ctr: 'CTR (%)', cpc: 'CPC (HUF)' }[metric];
@@ -257,6 +275,19 @@
         const gridColor = cssVar('--chart-grid');
         const tickColor = cssVar('--chart-tick');
         const medianColor = cssVar('--chart-median');
+        const mutedAccent = cssVar('--chart-muted-accent');
+        const mutedFill = cssVar('--chart-muted-fill');
+        const mutedMedian = cssVar('--chart-muted-median');
+
+        // Per-box colors (Chart.js's boxplot controller accepts an array here,
+        // one entry per data point, same as any other Chart.js dataset option)
+        // only diverge from the single accent color once an industry is
+        // actually selected - with nothing selected, every box stays the
+        // normal brand blue, unchanged from before this feature existed.
+        const isHighlighted = (name) => !selectedIndustry || name === selectedIndustry;
+        const perBoxBorder = industryNames.map((name) => isHighlighted(name) ? accent : mutedAccent);
+        const perBoxFill = industryNames.map((name) => isHighlighted(name) ? fill : mutedFill);
+        const perBoxMedian = industryNames.map((name) => isHighlighted(name) ? medianColor : mutedMedian);
 
         new Chart(canvas, {
             type: 'boxplot',
@@ -265,10 +296,10 @@
                 datasets: [{
                     label: metric,
                     data: Object.values(plot),
-                    backgroundColor: fill,
-                    borderColor: accent,
+                    backgroundColor: perBoxFill,
+                    borderColor: perBoxBorder,
                     borderWidth: 2,
-                    medianColor: medianColor,
+                    medianColor: perBoxMedian,
                     // Server-computed stats (Aggregator::boxPlotStats) force whiskers to
                     // the true min/max and outliers to always be empty - a handful of
                     // blended real+synthetic campaigns is too small a sample for the

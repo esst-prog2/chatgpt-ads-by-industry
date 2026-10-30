@@ -18,7 +18,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index']);
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/users', [UserAccessController::class, 'index'])->name('users');
+        Route::get('/', [UserAccessController::class, 'index'])->name('index');
+        Route::post('/users', [UserAccessController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}/role', [UserAccessController::class, 'update'])->name('users.update');
     });
 });

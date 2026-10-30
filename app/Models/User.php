@@ -36,4 +36,28 @@ class User extends Authenticatable
     {
         return $this->role === UserRole::Admin;
     }
+
+    /**
+     * Whether this email is in the ADMIN_EMAILS config list - these accounts
+     * are always Admin, permanently: GoogleAuthController seeds the role
+     * from this on first creation, and UserAccessController refuses to let
+     * any other admin change it afterward (see PLANNING_LOG.md).
+     */
+    public static function isEnvAdmin(string $email): bool
+    {
+        return in_array(strtolower($email), array_map('strtolower', config('services.google.admin_emails')), true);
+    }
+
+    /** Whether this email's domain matches ALLOWED_GOOGLE_DOMAIN. */
+    public static function isAllowedDomainEmail(?string $email): bool
+    {
+        $allowedDomain = config('services.google.allowed_domain');
+        if (blank($email) || blank($allowedDomain)) {
+            return false;
+        }
+
+        $domain = substr((string) strrchr($email, '@'), 1);
+
+        return strcasecmp($domain, $allowedDomain) === 0;
+    }
 }
