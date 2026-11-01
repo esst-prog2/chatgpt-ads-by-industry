@@ -60,4 +60,27 @@ class User extends Authenticatable
 
         return strcasecmp($domain, $allowedDomain) === 0;
     }
+
+    /**
+     * The actual access rule everywhere isAllowedDomainEmail() alone used to
+     * be it: the company domain, OR one of the named ALLOWED_EXTERNAL_EMAILS
+     * exceptions (PLANNING_LOG.md 2026-11-01) - explicit, named test/invite
+     * accounts outside the domain, not a general external-email opt-out.
+     */
+    public static function isAllowedEmail(?string $email): bool
+    {
+        if (self::isAllowedDomainEmail($email)) {
+            return true;
+        }
+
+        if (blank($email)) {
+            return false;
+        }
+
+        return in_array(
+            strtolower($email),
+            array_map('strtolower', config('services.google.allowed_external_emails', [])),
+            true
+        );
+    }
 }

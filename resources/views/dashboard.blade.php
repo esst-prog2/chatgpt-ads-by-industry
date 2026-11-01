@@ -65,6 +65,15 @@
         .account-bar .logout-button:hover { color:var(--warn); text-decoration:underline; }
         .account-bar .logout-button:focus-visible { text-decoration:underline; color:var(--accent); }
         .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+        /* Subtle, not a card - a plain top border separates it from the page
+           content, same muted/small treatment as .account-bar so it reads as
+           secondary chrome rather than another data point competing with
+           the tables above it. */
+        .site-footer {
+            margin-top:28px; padding-top:16px; border-top:1px solid var(--line);
+            text-align:center; font-size:12px; color:var(--muted);
+        }
+        .site-footer .rate-value { font-weight:700; color:var(--fg); }
         form { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
         label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
         input, select, button {
@@ -229,6 +238,29 @@
         <div class="card"><p class="empty-state">Select an industry above to see its accounts and campaigns.</p></div>
     @endif
 </main>
+
+<footer class="site-footer">
+    {{-- Same rates used throughout the page's own HUF conversions
+         (Aggregator) - never a separately-fetched or differently-rounded
+         number (DashboardController resolves ExchangeRateProvider once and
+         passes it straight through). Only shown for a currency this app
+         actually configures a rate for, so a future currency with no rate
+         yet doesn't render a misleading "0.00". --}}
+    @if (isset($exchangeRates['EUR']) || isset($exchangeRates['USD']))
+        <p>
+            Exchange rate:
+            @if (isset($exchangeRates['EUR']))
+                1 EUR = <span class="rate-value">{{ number_format($exchangeRates['EUR'], 2) }}</span> HUF
+            @endif
+            @if (isset($exchangeRates['EUR']) && isset($exchangeRates['USD']))
+                &middot;
+            @endif
+            @if (isset($exchangeRates['USD']))
+                1 USD = <span class="rate-value">{{ number_format($exchangeRates['USD'], 2) }}</span> HUF
+            @endif
+        </p>
+    @endif
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.4.4/build/index.umd.min.js"></script>

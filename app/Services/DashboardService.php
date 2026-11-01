@@ -24,13 +24,32 @@ final class DashboardService
         $names = [];
         $notices = [];
 
+        // Rule of 3 (PLANNING_LOG.md 2026-11-01): once an industry has 3+
+        // currently-active real accounts, it's shown real-only - synthetic
+        // accounts/records for that industry are excluded entirely below,
+        // not just from one summary table, so no "Synthetic" ghost rows
+        // with zero data appear either. "Active" means any source labelled
+        // 'Real' - both RealAdsSource (.env) and, as of 2026-11-01,
+        // DbRegisteredAdsSource (database-registered AdsAccount rows) count
+        // here generically, with no change needed to this method when the
+        // latter was wired in: accounts() is a cheap synchronous call for
+        // both (DbRegisteredAdsSource reads its own already-synced snapshot
+        // table, never the live API), so counting them costs nothing extra.
+        $realAccountCounts = $this->activeRealAccountCountsByIndustry();
+
         foreach ($this->sources as $source) {
+            $isSynthetic = $source->label() === 'Synthetic';
+
             foreach ($source->accounts() as $id => $name) {
+                if ($isSynthetic && ($realAccountCounts[$this->mapping->industryOf($id)] ?? 0) >= 3) {
+                    continue;
+                }
                 $labels[$id] = $source->label();
                 $names[$id] = $name;
             }
+
             try {
-                array_push($records, ...$source->records($from, $to));
+                $sourceRecords = $source->records($from, $to);
             } catch (Throwable $e) {
                 // Caught broadly and turned into a soft notice by design - a missing
                 // or rejected API key is expected and the dashboard should still
@@ -44,7 +63,16 @@ final class DashboardService
                     'trace' => $e->getTraceAsString(),
                 ]);
                 $notices[] = "The {$source->label()} account could not be loaded: {$e->getMessage()}.";
+                continue;
             }
+
+            if ($isSynthetic) {
+                $sourceRecords = array_values(array_filter(
+                    $sourceRecords,
+                    fn ($r) => ($realAccountCounts[$this->mapping->industryOf($r->account)] ?? 0) < 3
+                ));
+            }
+            array_push($records, ...$sourceRecords);
         }
 
         $campaigns = $this->aggregator->campaignTotals($records);
@@ -83,5 +111,22 @@ final class DashboardService
             'selectedIndustry' => $drilldown === null ? null : $industry,
             'drilldown' => $drilldown,
         ];
+    }
+
+    /** @return array<string, int> industry => count of currently-active ('Real'-labeled) accounts */
+    private function activeRealAccountCountsByIndustry(): array
+    {
+        $counts = [];
+        foreach ($this->sources as $source) {
+            if ($source->label() !== 'Real') {
+                continue;
+            }
+            foreach (array_keys($source->accounts()) as $id) {
+                $i = $this->mapping->industryOf($id);
+                $counts[$i] = ($counts[$i] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
     }
 }

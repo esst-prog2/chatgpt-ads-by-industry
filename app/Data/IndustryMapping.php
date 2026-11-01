@@ -16,7 +16,15 @@ final class IndustryMapping
         }
     }
 
-    public static function fromCsv(string $path): self
+    /**
+     * @param  array<string, string>  $extra  additional account id => industry
+     *      pairs merged on top of the CSV (e.g. database-registered AdsAccount
+     *      rows, whose industry is already known directly from their own
+     *      column, not from this file - see AppServiceProvider). Keys can't
+     *      collide with the CSV's "real-account-N" ids by construction
+     *      (AdsAccount::internalId() always returns "db-account-{id}").
+     */
+    public static function fromCsv(string $path, array $extra = []): self
     {
         $map = [];
         $handle = fopen($path, 'r');
@@ -28,7 +36,7 @@ final class IndustryMapping
         }
         fclose($handle);
 
-        return new self($map);
+        return new self([...$map, ...$extra]);
     }
 
     public function industryOf(string $account): string
