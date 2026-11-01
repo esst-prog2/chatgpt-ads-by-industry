@@ -20,4 +20,16 @@ final class Industries
         'Travel & Hospitality',
         self::OTHER,
     ];
+
+    /**
+     * ALL minus OTHER: the industries someone would deliberately onboard a
+     * new account into - OTHER is just the fallback for an account nobody
+     * has mapped yet, not a real category to pick from a form.
+     *
+     * @return list<string>
+     */
+    public static function onboardable(): array
+    {
+        return array_values(array_diff(self::ALL, [self::OTHER]));
+    }
 }

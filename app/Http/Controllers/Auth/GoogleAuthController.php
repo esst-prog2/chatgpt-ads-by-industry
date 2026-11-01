@@ -60,7 +60,7 @@ class GoogleAuthController extends Controller
         }
         $email = $googleUser->getEmail();
 
-        if (! User::isAllowedDomainEmail($email)) {
+        if (! User::isAllowedEmail($email)) {
             // Never creates/touches a User row for a rejected domain - and
             // Auth::login() hasn't run yet, so this person never gets an
             // app session even though they completed Google's own OAuth flow.

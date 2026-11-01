@@ -2,11 +2,23 @@
 
 namespace App\Data;
 
-use Carbon\CarbonImmutable;
-
-final class SyntheticSource implements PerformanceSource
+final class SyntheticSource extends AbstractSyntheticSource
 {
-    public const DAYS = 30;
+    // The 4 industries this hand-curated dataset covers - used by
+    // AppServiceProvider to decide which OTHER industries need
+    // GenericSyntheticSource's immediate, uncalibrated fallback instead
+    // (PLANNING_LOG.md 2026-11-01). Kept here, not re-derived from
+    // self::ACCOUNTS + a mapping lookup, since it's simpler to read as a
+    // plain list and this dataset only ever changes by deliberate edit.
+    // Software & Technology was removed 2026-11-01: account_industry.csv's
+    // mapping for its one synthetic account (syn-software-1) disappeared
+    // externally, and rather than silently restoring it, the user chose to
+    // treat Software & Technology as genuinely uncovered going forward - a
+    // deliberate test case for GenericSyntheticSource once a real account
+    // exists there again, not an oversight.
+    public const COVERED_INDUSTRIES = [
+        'Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality',
+    ];
 
     // Synthetic data exists ONLY for industries that have at least one real
     // account (see account_industry.csv, PLANNING_LOG.md 2026-10-16) - it
@@ -26,8 +38,6 @@ final class SyntheticSource implements PerformanceSource
     //     ~9, CTR 1.61%, CPC 1589 HUF - a single very new, low-volume account
     //     (only 2 of 28 days had any delivery), so "range" here is really one
     //     thin data point, not an observed spread like the other industries.
-    //   Software & Technology real (pulled live 2026-10-27): daily
-    //     impressions ~364, CTR 0.55%, CPC 791 HUF.
     // All synthetic accounts are HUF, for simplicity - see PLANNING_LOG.md.
     // Synthetic account ids (syn-*) never collide with real ones
     // (real-account-N), so accountTotals() - grouped strictly by id - never
@@ -42,67 +52,10 @@ final class SyntheticSource implements PerformanceSource
         'syn-health-2' => ['Wellspring Clinics', 1000, 0.013, 250, ['Checkup Reminders', 'Dental Care']],
         'syn-travel-1' => ['Blue Horizon Travel', 25, 0.017, 1650, ['Summer Getaway Sale', 'Weekend Escape Promo']],
         'syn-travel-2' => ['Alpine Trail Tours', 15, 0.015, 1450, ['Adventure Package Deals', 'Group Booking Discount']],
-        'syn-software-1' => ['Northbridge Software Labs', 400, 0.006, 820, ['Product Launch', 'Free Trial Signup', 'Enterprise Demo']],
     ];
 
-    private readonly string $endDate;
-
-    public function __construct(?string $endDate = null)
+    protected function accountDefinitions(): array
     {
-        $this->endDate = $endDate ?? CarbonImmutable::yesterday()->toDateString();
-    }
-
-    public function label(): string
-    {
-        return 'Synthetic';
-    }
-
-    public function accounts(): array
-    {
-        return array_map(fn (array $a) => $a[0], self::ACCOUNTS);
-    }
-
-    public function records(string $from, string $to): array
-    {
-        $end = CarbonImmutable::parse($this->endDate);
-        $start = $end->subDays(self::DAYS - 1);
-        $first = max($start, CarbonImmutable::parse($from));
-        $last = min($end, CarbonImmutable::parse($to));
-
-        $records = [];
-        for ($day = $first; $day <= $last; $day = $day->addDay()) {
-            $date = $day->toDateString();
-            foreach (self::ACCOUNTS as $accountId => [$name, $baseImpressions, $baseCtr, $baseCpc, $campaigns]) {
-                foreach ($campaigns as $index => $campaign) {
-                    $key = "{$accountId}|{$campaign}";
-                    $impressions = (int) round(
-                        $baseImpressions * (0.4 + $this->unit($key, 'volume') * 1.2) * (0.8 + $this->unit("{$key}|{$date}", 'imp') * 0.4)
-                    );
-                    $ctr = $baseCtr * (0.6 + $this->unit($key, 'ctr') * 0.8) * (0.85 + $this->unit("{$key}|{$date}", 'clk') * 0.3);
-                    $clicks = (int) round($impressions * $ctr);
-                    // CPC varies per campaign (not per day) within +/-15% of the target, rounded to
-                    // a whole HUF up front. Spend is then clicks * cpc with both factors already
-                    // integers, so it is exact - no rounding step, no discrepancy to reconcile.
-                    $cpc = (int) round($baseCpc * (0.85 + $this->unit($key, 'cpc') * 0.3));
-                    $records[] = new PerformanceRecord(
-                        $accountId,
-                        "{$accountId}-c".($index + 1),
-                        $campaign,
-                        $date,
-                        $impressions,
-                        $clicks,
-                        (float) ($clicks * $cpc),
-                        'HUF',
-                    );
-                }
-            }
-        }
-
-        return $records;
-    }
-
-    private function unit(string $key, string $salt): float
-    {
-        return (crc32("{$salt}|{$key}") % 10000) / 10000;
+        return self::ACCOUNTS;
     }
 }

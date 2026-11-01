@@ -42,7 +42,6 @@
         table { width:100%; border-collapse:collapse; font-size:14px; }
         th, td { text-align:left; padding:8px; border-bottom:1px solid var(--line); }
         th { font-weight:700; }
-        .role-form { display:flex; gap:8px; align-items:center; }
         .protected-badge { font-size:12px; font-weight:700; color:var(--purple); border:1px solid var(--purple); border-radius:99px; padding:2px 10px; }
         input, select, button { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
         button { background:var(--accent); color:var(--accent-contrast); border-color:var(--accent); font-weight:700; cursor:pointer; }
@@ -52,22 +51,44 @@
              to one column on narrow screens - every field and the submit
              button share one explicit height/padding/radius/font-size rule
              below, so none of them can drift out of alignment with the others. --}}
-        .add-user-form { display:grid; grid-template-columns:1fr 160px auto; gap:12px; align-items:end; }
-        .add-user-form .field { display:flex; flex-direction:column; gap:4px; }
-        .add-user-form label { font-size:13px; color:var(--muted); }
-        .add-user-form input,
-        .add-user-form select,
-        .add-user-form button {
+        .add-user-form, .add-account-form { display:grid; grid-template-columns:1fr 160px auto; gap:12px; align-items:end; }
+        .add-account-form { grid-template-columns:1fr 160px 120px auto; }
+        .row-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+        .row-actions input, .row-actions select { padding:6px 8px; }
+        {{-- Collapsible edit flow, shared by the Ads accounts AND Users
+             tables: an editable row starts showing plain text + an "Edit"
+             button; clicking it reveals the select(s) and Save/Delete -
+             toggled by a class on the <tr> rather than inline styles, so CSS
+             (not JS) decides what each state looks like, and the one JS
+             handler below (`.edit-toggle` click listener) works for any
+             table using this same class pair with no table-specific code.
+             display:revert, not a hardcoded display value, so each element
+             (select/button/span) falls back to its own normal default
+             regardless of tag. --}}
+        .editable-row .edit-only { display:none; }
+        .editable-row.editing .edit-only { display:revert; }
+        .editable-row.editing .view-only { display:none; }
+        {{-- background set explicitly in both states, not just filter on
+             hover: .danger-button:hover and the page's generic button:hover
+             (accent blue) have equal class+pseudo vs type+pseudo specificity
+             on different properties, so without this the button would flash
+             blue on hover instead of staying red - the same class of bug
+             already caught once in this file (2026-10-30, tab-button hover). --}}
+        .danger-button { background:var(--err); border-color:var(--err); }
+        .danger-button:hover { background:var(--err); border-color:var(--err); filter:brightness(0.9); }
+        .add-user-form .field, .add-account-form .field { display:flex; flex-direction:column; gap:4px; }
+        .add-user-form label, .add-account-form label { font-size:13px; color:var(--muted); }
+        .add-user-form input, .add-user-form select, .add-user-form button,
+        .add-account-form input, .add-account-form select, .add-account-form button {
             height:40px; box-sizing:border-box; padding:0 12px;
             border:1px solid var(--line); border-radius:8px; font-size:14px;
             background:var(--card); color:var(--fg);
         }
-        .add-user-form button { background:var(--accent); color:var(--accent-contrast); border-color:var(--accent); font-weight:700; cursor:pointer; }
-        .add-user-form button:hover { background:var(--accent-hover); }
-        @media (max-width:560px) {
-            .add-user-form { grid-template-columns:1fr; }
+        .add-user-form button, .add-account-form button { background:var(--accent); color:var(--accent-contrast); border-color:var(--accent); font-weight:700; cursor:pointer; }
+        .add-user-form button:hover, .add-account-form button:hover { background:var(--accent-hover); }
+        @media (max-width:680px) {
+            .add-user-form, .add-account-form { grid-template-columns:1fr; }
         }
-        .placeholder { text-align:center; padding:40px 16px; color:var(--muted); }
     </style>
 </head>
 <body>
@@ -91,29 +112,43 @@
         <div class="card">
             <h2>Users</h2>
             <table>
-                <thead><tr><th>Email</th><th>Name</th><th>Role</th><th></th></tr></thead>
+                <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
                 <tbody>
                 @foreach ($users as $user)
-                    <tr>
+                    @php($isEnvAdmin = \App\Models\User::isEnvAdmin($user->email))
+                    @php($isSelf = $user->is(auth()->user()))
+                    @php($protected = $isEnvAdmin || $isSelf)
+                    <tr @if (! $protected) class="editable-row" @endif>
                         <td>{{ $user->email }}</td>
                         <td>{{ $user->name }}</td>
-                        <td>{{ $user->is(auth()->user()) ? $user->role->value.' (you)' : $user->role->value }}</td>
-                        <td>
-                            @if (\App\Models\User::isEnvAdmin($user->email))
-                                <span class="protected-badge" title="Set via ADMIN_EMAILS - can't be changed here">Protected</span>
-                            @else
-                                <form class="role-form" method="POST" action="{{ route('admin.users.update', $user) }}">
-                                    @csrf
-                                    @method('PATCH')
-                                    <select name="role">
-                                        @foreach (\App\Enums\UserRole::cases() as $role)
-                                            <option value="{{ $role->value }}" @selected($role === $user->role)>{{ ucfirst($role->value) }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="submit">Save</button>
-                                </form>
-                            @endif
-                        </td>
+                        @if ($protected)
+                            <td>{{ $isSelf ? $user->role->value.' (you)' : $user->role->value }}</td>
+                            <td>
+                                <span class="protected-badge" title="{{ $isEnvAdmin ? 'Set via ADMIN_EMAILS - cannot be changed here' : 'You cannot edit or delete your own account here' }}">Protected</span>
+                            </td>
+                        @else
+                            @php($formId = 'user-edit-'.$user->id)
+                            <td>
+                                <span class="view-only">{{ $user->role->value }}</span>
+                                <select class="edit-only" form="{{ $formId }}" name="role">
+                                    @foreach (\App\Enums\UserRole::cases() as $role)
+                                        <option value="{{ $role->value }}" @selected($role === $user->role)>{{ ucfirst($role->value) }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="row-actions">
+                                <button type="button" class="view-only edit-toggle">Edit</button>
+                                <span class="edit-only">
+                                    <button form="{{ $formId }}" type="submit">Save</button>
+                                    <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
+                                          onsubmit="return confirm('Remove this user?');" style="display:inline;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="danger-button">Delete</button>
+                                    </form>
+                                </span>
+                            </td>
+                        @endif
                     </tr>
                 @endforeach
                 </tbody>
@@ -122,6 +157,19 @@
                 <p class="muted">No users yet.</p>
             @endif
         </div>
+
+        {{-- Same external-form technique as the Ads accounts table below:
+             the Role select and the Save button now live in separate
+             columns, so the editable row's actual PATCH <form> can't wrap
+             them both directly - referenced by the form="" attribute above. --}}
+        @foreach ($users as $user)
+            @if (! \App\Models\User::isEnvAdmin($user->email) && ! $user->is(auth()->user()))
+                <form id="user-edit-{{ $user->id }}" method="POST" action="{{ route('admin.users.update', $user) }}">
+                    @csrf
+                    @method('PATCH')
+                </form>
+            @endif
+        @endforeach
 
         <div class="card">
             <h2>Add a user</h2>
@@ -136,9 +184,13 @@
                 </div>
                 <div class="field">
                     <label for="add-user-role">Role</label>
+                    {{-- Defaults to Viewer, not the first enum case (Admin) -
+                         minimal permissions until deliberately escalated,
+                         rather than an admin accidentally leaving the
+                         pre-filled value as-is for a new user. --}}
                     <select id="add-user-role" name="role">
                         @foreach (\App\Enums\UserRole::cases() as $role)
-                            <option value="{{ $role->value }}">{{ ucfirst($role->value) }}</option>
+                            <option value="{{ $role->value }}" @selected($role === \App\Enums\UserRole::Viewer)>{{ ucfirst($role->value) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -150,10 +202,124 @@
 
     <div class="tab-panel" id="tab-ads">
         <div class="card">
-            <div class="placeholder">
-                <h2>Ads Account Management</h2>
-                <p style="margin:0;">Coming soon - this is where real Ads API accounts will be added and managed directly from the dashboard.</p>
-            </div>
+            <h2>Ads accounts</h2>
+            <p class="muted" style="margin-top:0;">
+                Every connected account, anonymized - .env-configured real
+                accounts (read-only here: edit their industry via the CSV
+                mapping file and their currency/key via .env) and
+                database-registered accounts (editable below).
+            </p>
+            <table>
+                <thead><tr><th>Account</th><th>Industry</th><th>Currency</th><th>Added / Source</th><th>Actions</th></tr></thead>
+                <tbody>
+                @foreach ($unifiedAccounts as $i => $row)
+                    <tr @if ($row['editable']) class="editable-row" @endif>
+                        <td>Account #{{ $i + 1 }}</td>
+                        @if ($row['editable'])
+                            @php($formId = 'ads-edit-'.$row['model']->id)
+                            <td>
+                                <span class="view-only">{{ $row['industry'] }}</span>
+                                <select class="edit-only" form="{{ $formId }}" name="industry">
+                                    @foreach ($industries as $ind)
+                                        <option value="{{ $ind }}" @selected($ind === $row['industry'])>{{ $ind }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td>
+                                <span class="view-only">{{ $row['currency'] }}</span>
+                                {{-- Pre-selects the account's own actual stored
+                                     currency (never forced to HUF regardless of
+                                     that) - HUF is only the Add-account form's
+                                     default for a brand-new row, not something
+                                     an edit should override onto an existing
+                                     EUR/USD account. --}}
+                                <select class="edit-only" form="{{ $formId }}" name="currency">
+                                    @foreach (['USD', 'EUR', 'HUF'] as $c)
+                                        <option value="{{ $c }}" @selected($c === $row['currency'])>{{ $c }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td>{{ $row['source'] }}</td>
+                            <td class="row-actions">
+                                <button type="button" class="view-only edit-toggle">Edit</button>
+                                <span class="edit-only">
+                                    {{-- The API key is immutable once set - no edit
+                                         field here at all (AdsAccountController::update()
+                                         no longer accepts ads_api_key either; rotating a
+                                         key means removing this account and re-adding it). --}}
+                                    <button form="{{ $formId }}" type="submit">Save</button>
+                                    <form method="POST" action="{{ route('admin.ads-accounts.destroy', $row['model']) }}"
+                                          onsubmit="return confirm('Remove this ads account?');" style="display:inline;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="danger-button">Delete</button>
+                                    </form>
+                                </span>
+                            </td>
+                        @else
+                            <td>{{ $row['industry'] }}</td>
+                            <td>{{ $row['currency'] }}</td>
+                            <td>{{ $row['source'] }}</td>
+                            <td><span class="muted">Read-only (.env)</span></td>
+                        @endif
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+            @if (empty($unifiedAccounts))
+                <p class="muted">No accounts connected yet.</p>
+            @endif
+        </div>
+
+        {{-- A <form> can't wrap table cells directly (confirmed earlier in
+             this file's history), and an editable row's controls now span
+             separate Industry/Currency/Actions columns rather than one
+             merged cell - so each editable row's actual PATCH <form> lives
+             here instead, referenced by the matching inputs' form="" attribute
+             above. Laravel's e() default-escapes $row['model']->id (an int),
+             so this is safe even though it's built with string concatenation. --}}
+        @foreach ($unifiedAccounts as $row)
+            @if ($row['editable'])
+                <form id="ads-edit-{{ $row['model']->id }}" method="POST" action="{{ route('admin.ads-accounts.update', $row['model']) }}">
+                    @csrf
+                    @method('PATCH')
+                </form>
+            @endif
+        @endforeach
+
+        <div class="card">
+            <h2>Add an ads account</h2>
+            <p class="muted" style="margin-top:0;">
+                Registers an account for the Rule of 3 (3+ real accounts in an
+                industry switches that industry to real data only). A background
+                job fetches its live data right after you add it, and every
+                registered account re-syncs automatically every night.
+            </p>
+            <form class="add-account-form" method="POST" action="{{ route('admin.ads-accounts.store') }}">
+                @csrf
+                <div class="field">
+                    <label for="add-account-key">Ads API Key</label>
+                    <input type="password" id="add-account-key" name="ads_api_key" required autocomplete="off">
+                </div>
+                <div class="field">
+                    <label for="add-account-industry">Industry</label>
+                    <select id="add-account-industry" name="industry" required>
+                        <option value="" disabled selected>Select industry...</option>
+                        @foreach ($industries as $i)
+                            <option value="{{ $i }}">{{ $i }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="add-account-currency">Currency</label>
+                    <select id="add-account-currency" name="currency">
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="HUF" selected>HUF</option>
+                    </select>
+                </div>
+                <button type="submit">Add account</button>
+            </form>
         </div>
     </div>
 </main>
@@ -164,6 +330,11 @@
             document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
             button.classList.add('active');
             document.getElementById('tab-' + button.dataset.tab).classList.add('active');
+        });
+    });
+    document.querySelectorAll('.edit-toggle').forEach((button) => {
+        button.addEventListener('click', () => {
+            button.closest('tr').classList.add('editing');
         });
     });
 </script>

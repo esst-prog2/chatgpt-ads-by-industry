@@ -48,6 +48,18 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
         'allowed_domain' => env('ALLOWED_GOOGLE_DOMAIN'),
         'admin_emails' => array_filter(array_map('trim', explode(',', env('ADMIN_EMAILS', '')))),
+        // Named exceptions to allowed_domain - explicit, named test/invite
+        // accounts outside the company domain, not a general opt-out.
+        // Checked by User::isAllowedEmail() everywhere allowed_domain alone
+        // used to be the whole rule: both the admin "Add a user" form
+        // (UserAccessController::store()) and the actual Google OAuth login
+        // gate (GoogleAuthController::callback()) - an invited exception
+        // email that could never complete sign-in wouldn't be usable "for
+        // testing purposes" at all, just a dead row in the users table.
+        // No hardcoded default here (same as admin_emails below) - the
+        // actual exception email lives only in .env, never in a tracked
+        // file (CLAUDE.md privacy rules; PLANNING_LOG.md 2026-11-01).
+        'allowed_external_emails' => array_filter(array_map('trim', explode(',', env('ALLOWED_EXTERNAL_EMAILS', '')))),
     ],
 
 ];

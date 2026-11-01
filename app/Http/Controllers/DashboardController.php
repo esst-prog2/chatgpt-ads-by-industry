@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Services\Aggregator;
 use App\Services\DashboardService;
+use App\Services\ExchangeRateProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request, DashboardService $dashboard)
+    public function index(Request $request, DashboardService $dashboard, ExchangeRateProvider $exchangeRates)
     {
         $end = CarbonImmutable::yesterday()->toDateString();
         $default = ['from' => CarbonImmutable::yesterday()->subDays(27)->toDateString(), 'to' => $end];
@@ -38,6 +39,16 @@ class DashboardController extends Controller
 
         $data = $dashboard->build($range['from'], $range['to'], $metric, $request->query('industry'));
 
-        return view('dashboard', $data + ['errors_list' => $errors, 'metrics' => Aggregator::METRICS]);
+        return view('dashboard', $data + [
+            'errors_list' => $errors,
+            'metrics' => Aggregator::METRICS,
+            // Same rates the dashboard's own HUF conversions already use
+            // (live MNB rate when available, falling back per-currency
+            // otherwise - see MnbExchangeRateService) - resolved once per
+            // request here rather than re-reading config directly, so the
+            // footer never shows a different number than what Aggregator
+            // actually converted with.
+            'exchangeRates' => $exchangeRates->ratesToHuf(),
+        ]);
     }
 }

@@ -48,7 +48,6 @@ class DataSourcesTest extends TestCase
             'Professional Services' => [253, 532],
             'Health' => [236, 238],
             'Travel & Hospitality' => [1450, 1650],
-            'Software & Technology' => [820, 820],
         ];
 
         foreach ($records as $r) {
@@ -80,9 +79,13 @@ class DataSourcesTest extends TestCase
         }
         // Synthetic data exists only for industries that have at least one
         // real account (see account_industry.csv, PLANNING_LOG.md 2026-10-16;
-        // Travel & Hospitality and Software & Technology added 2026-10-27).
+        // Travel & Hospitality added 2026-10-27). Software & Technology was
+        // removed from this hand-curated dataset 2026-11-01 (its CSV mapping
+        // for syn-software-1 disappeared externally, and the user chose to
+        // treat the industry as genuinely uncovered rather than restore it -
+        // see PLANNING_LOG.md).
         $this->assertEqualsCanonicalizing(
-            ['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality', 'Software & Technology'],
+            ['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality'],
             array_keys($industries)
         );
         foreach ($industries as $accounts) {
@@ -96,13 +99,17 @@ class DataSourcesTest extends TestCase
 
     public function test_every_industry_has_at_least_two_accounts_counting_real_and_synthetic(): void
     {
-        $realIds = ['real-account-1', 'real-account-2', 'real-account-3', 'real-account-4', 'real-account-5', 'real-account-6', 'real-account-7'];
+        // real-account-7 (Software & Technology) deliberately excluded: that
+        // industry no longer has any hand-curated synthetic sibling
+        // (removed 2026-11-01, see SyntheticSource::COVERED_INDUSTRIES), so
+        // it's no longer covered by this "at least 2" invariant either.
+        $realIds = ['real-account-1', 'real-account-2', 'real-account-3', 'real-account-4', 'real-account-5', 'real-account-6'];
         $accounts = array_unique(array_merge(array_keys((new SyntheticSource(self::END))->accounts()), $realIds));
         $perIndustry = [];
         foreach ($accounts as $account) {
             $perIndustry[$this->mapping()->industryOf($account)][] = $account;
         }
-        $this->assertCount(5, $perIndustry);
+        $this->assertCount(4, $perIndustry);
         foreach ($perIndustry as $industry => $list) {
             $this->assertGreaterThanOrEqual(2, count($list), $industry);
         }

@@ -46,15 +46,20 @@ return [
         fn (array $a) => filled($a['api_key'])
     )),
 
-    // Lightweight, manually-configured conversion to HUF for industry-level
-    // aggregation (account/campaign-level figures stay in their own native
-    // currency - see Aggregator). Not a live rate: update EUR_TO_HUF_RATE in
-    // .env when it drifts meaningfully. Add another currency here (with its
-    // own env var) if a real account in a different currency is onboarded;
-    // Aggregator throws if it ever meets a currency with no rate configured,
+    // Static FALLBACK conversion to HUF for industry-level aggregation
+    // (account/campaign-level figures stay in their own native currency -
+    // see Aggregator). As of 2026-11-01 this is no longer the primary rate
+    // source - AppServiceProvider wraps it in MnbExchangeRateService, which
+    // fetches the real daily rate live from MNB (Magyar Nemzeti Bank) and
+    // only falls back to these static values, per currency, if that live
+    // fetch is unavailable. Update *_TO_HUF_RATE in .env if these drift too
+    // far to be a sane fallback. Add another currency here (with its own env
+    // var) if a real account in a different currency is onboarded; Aggregator
+    // throws if it ever meets a currency with no rate configured at all,
     // rather than silently treating it as 1:1.
     'exchange_rates_to_huf' => [
         'HUF' => 1.0,
         'EUR' => (float) env('EUR_TO_HUF_RATE', 400.0),
+        'USD' => (float) env('USD_TO_HUF_RATE', 350.0),
     ],
 ];

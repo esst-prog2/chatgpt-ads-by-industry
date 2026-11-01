@@ -86,17 +86,20 @@ class DashboardTest extends TestCase
             ->assertViewHas('to', $to->toDateString());
     }
 
-    public function test_box_plot_shows_all_five_synthetic_backed_industries_even_with_no_real_key(): void
+    public function test_box_plot_shows_all_four_synthetic_backed_industries_even_with_no_real_key(): void
     {
         // Synthetic data exists only for industries that have a real account
         // (Education & Careers, Professional Services, Health, Travel &
-        // Hospitality, Software & Technology) - but it doesn't require a
-        // *currently configured* key to appear, since it's not tied to any
-        // one real account's availability.
+        // Hospitality) - but it doesn't require a *currently configured* key
+        // to appear, since it's not tied to any one real account's
+        // availability. Software & Technology is deliberately not in this
+        // list: its synthetic coverage was removed 2026-11-01 (see
+        // SyntheticSource::COVERED_INDUSTRIES) and this config override
+        // doesn't include real-account-7 either, so nothing contributes it.
         config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
         $box = $this->get('/')->viewData('boxPlot');
 
-        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality', 'Software & Technology'], array_keys($box));
+        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality'], array_keys($box));
         $this->assertCount(5, $box['Education & Careers']['items']); // syn-edu-1 (2 campaigns) + syn-edu-2 (3)
     }
 
@@ -108,7 +111,7 @@ class DashboardTest extends TestCase
 
         $box = $this->get('/')->viewData('boxPlot');
 
-        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality', 'Software & Technology'], array_keys($box));
+        $this->assertEqualsCanonicalizing(['Education & Careers', 'Professional Services', 'Health', 'Travel & Hospitality'], array_keys($box));
         $this->assertCount(6, $box['Education & Careers']['items']); // 5 synthetic + 1 real campaign
     }
 
@@ -179,6 +182,89 @@ class DashboardTest extends TestCase
         $response = $this->get('/?from=2026-09-20&to=2026-09-20')->assertOk();
         $this->assertSame([], $response->viewData('boxPlot')['Automotive']);
         $response->assertSee('No campaign data in this range for: Automotive');
+    }
+
+    public function test_an_industry_with_three_or_more_real_accounts_shows_real_data_only(): void
+    {
+        $realSource = new class implements PerformanceSource
+        {
+            public function label(): string { return 'Real'; }
+
+            public function accounts(): array { return ['r1' => 'Real A', 'r2' => 'Real B', 'r3' => 'Real C']; }
+
+            public function records(string $from, string $to): array
+            {
+                return [
+                    new PerformanceRecord('r1', 'c1', 'Campaign #1', '2026-09-20', 100, 5, 50.0, 'HUF'),
+                    new PerformanceRecord('r2', 'c1', 'Campaign #1', '2026-09-20', 200, 10, 100.0, 'HUF'),
+                    new PerformanceRecord('r3', 'c1', 'Campaign #1', '2026-09-20', 300, 15, 150.0, 'HUF'),
+                ];
+            }
+        };
+        $syntheticSource = new class implements PerformanceSource
+        {
+            public function label(): string { return 'Synthetic'; }
+
+            public function accounts(): array { return ['s1' => 'Synthetic Sibling']; }
+
+            public function records(string $from, string $to): array
+            {
+                // Deliberately huge: if this leaked through despite the Rule
+                // of 3, it would dominate both the drilldown and the box
+                // plot's max - an easy, unambiguous way to prove it didn't.
+                return [new PerformanceRecord('s1', 'c1', 'Campaign #1', '2026-09-20', 999999, 99999, 999.0, 'HUF')];
+            }
+        };
+        $mapping = new IndustryMapping(['r1' => 'Health', 'r2' => 'Health', 'r3' => 'Health', 's1' => 'Health']);
+        $this->app->instance(DashboardService::class, new DashboardService([$realSource, $syntheticSource], $mapping));
+
+        $response = $this->get('/?from=2026-09-20&to=2026-09-20&industry=Health')->assertOk();
+
+        $drill = $response->viewData('drilldown');
+        // Not just "the synthetic account shows 0 data" - it's absent
+        // entirely, so no "Synthetic" ghost row with nothing in it either.
+        $this->assertCount(3, $drill);
+        $this->assertEqualsCanonicalizing(['Real', 'Real', 'Real'], array_column($drill, 'label'));
+
+        $box = $response->viewData('boxPlot')['Health'];
+        $this->assertEquals(300, $box['max']); // the real max, not the synthetic 999999
+    }
+
+    public function test_an_industry_with_fewer_than_three_real_accounts_still_blends_synthetic_data(): void
+    {
+        $realSource = new class implements PerformanceSource
+        {
+            public function label(): string { return 'Real'; }
+
+            public function accounts(): array { return ['r1' => 'Real A', 'r2' => 'Real B']; }
+
+            public function records(string $from, string $to): array
+            {
+                return [
+                    new PerformanceRecord('r1', 'c1', 'Campaign #1', '2026-09-20', 100, 5, 50.0, 'HUF'),
+                    new PerformanceRecord('r2', 'c1', 'Campaign #1', '2026-09-20', 200, 10, 100.0, 'HUF'),
+                ];
+            }
+        };
+        $syntheticSource = new class implements PerformanceSource
+        {
+            public function label(): string { return 'Synthetic'; }
+
+            public function accounts(): array { return ['s1' => 'Synthetic Sibling']; }
+
+            public function records(string $from, string $to): array
+            {
+                return [new PerformanceRecord('s1', 'c1', 'Campaign #1', '2026-09-20', 150, 7, 75.0, 'HUF')];
+            }
+        };
+        $mapping = new IndustryMapping(['r1' => 'Health', 'r2' => 'Health', 's1' => 'Health']);
+        $this->app->instance(DashboardService::class, new DashboardService([$realSource, $syntheticSource], $mapping));
+
+        $response = $this->get('/?from=2026-09-20&to=2026-09-20&industry=Health')->assertOk();
+
+        $drill = $response->viewData('drilldown');
+        $this->assertCount(3, $drill); // 2 real + the synthetic sibling, unchanged default behavior
+        $this->assertEqualsCanonicalizing(['Real', 'Real', 'Synthetic'], array_column($drill, 'label'));
     }
 
     public function test_industry_filter_dropdown_only_lists_industries_that_currently_have_data(): void
@@ -481,5 +567,139 @@ class DashboardTest extends TestCase
         $this->assertSame(777, $real['totals']['impressions']);
         $this->assertSame(13, $real['totals']['clicks']);
         $this->assertEquals(1234.0, $real['totals']['spend']); // exactly what the fake API returned, nothing added or scaled
+    }
+
+    public function test_a_database_registered_account_with_synced_data_appears_as_real_in_the_dashboard(): void
+    {
+        // No .env real accounts active for Health - the only "Real" entry
+        // here must come from DbRegisteredAdsSource, confirming it's wired
+        // into DashboardService's sources, not just present but unused.
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+        $account = \App\Models\AdsAccount::create(['industry' => 'Health', 'currency' => 'EUR', 'ads_api_key' => 'sk-key']);
+        $yesterday = CarbonImmutable::yesterday()->toDateString();
+        \App\Models\AdsAccountPerformanceRecord::create([
+            'ads_account_id' => $account->id, 'campaign_id' => 'c1', 'campaign' => 'Campaign #1',
+            'date' => $yesterday, 'impressions' => 400, 'clicks' => 20, 'spend' => 80.0, 'currency' => 'EUR',
+        ]);
+
+        $response = $this->get('/?industry=Health')->assertOk();
+        $drill = $response->viewData('drilldown');
+        $real = collect($drill)->firstWhere('label', 'Real');
+
+        $this->assertNotNull($real);
+        $this->assertSame("db-account-{$account->id}", $real['id']);
+        $this->assertSame(400, $real['totals']['impressions']);
+        $this->assertSame('EUR', $real['totals']['currency']);
+    }
+
+    public function test_database_registered_accounts_count_toward_the_rule_of_3_alongside_env_accounts(): void
+    {
+        // real-account-4 is genuinely mapped to Health in the real CSV (one
+        // .env real account); 2 database-registered Health accounts bring
+        // the total to 3, which should suppress Health's synthetic siblings
+        // (syn-health-1/2) exactly as it would for 3 .env-only accounts.
+        config(['ads.accounts' => [
+            ['id' => 'real-account-4', 'api_key' => 'sk-4', 'label' => 'Health Partner A', 'currency' => 'HUF'],
+        ]]);
+        $yesterday = CarbonImmutable::yesterday()->toDateString();
+        Http::fake(['*' => Http::response(['data' => [$this->realRow($yesterday, imp: 100, clk: 5, spend: 50.0)], 'has_more' => false])]);
+
+        $db1 = \App\Models\AdsAccount::create(['industry' => 'Health', 'currency' => 'HUF', 'ads_api_key' => 'sk-db-1']);
+        $db2 = \App\Models\AdsAccount::create(['industry' => 'Health', 'currency' => 'HUF', 'ads_api_key' => 'sk-db-2']);
+        foreach ([$db1, $db2] as $db) {
+            \App\Models\AdsAccountPerformanceRecord::create([
+                'ads_account_id' => $db->id, 'campaign_id' => 'c1', 'campaign' => 'Campaign #1',
+                'date' => $yesterday, 'impressions' => 200, 'clicks' => 10, 'spend' => 40.0, 'currency' => 'HUF',
+            ]);
+        }
+
+        $response = $this->get('/?industry=Health')->assertOk();
+        $drill = $response->viewData('drilldown');
+
+        $this->assertCount(3, $drill); // 1 .env + 2 db - no synthetic ghosts
+        $this->assertTrue(collect($drill)->every(fn ($a) => $a['label'] === 'Real'));
+    }
+
+    public function test_a_brand_new_industry_gets_immediate_generic_synthetic_fallback(): void
+    {
+        // Automotive has no .env real account, no row in account_industry.csv,
+        // and no SyntheticSource::COVERED_INDUSTRIES entry - genuinely
+        // uncovered until this one database-registered account exists. No
+        // sync, no queue worker, no extra step: GenericSyntheticSource is
+        // computed fresh by AppServiceProvider on every DashboardService
+        // resolution, so the very next page load already has it.
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+        \App\Models\AdsAccount::create(['industry' => 'Automotive', 'currency' => 'HUF', 'ads_api_key' => 'sk-automotive-1']);
+
+        $response = $this->get('/?industry=Automotive')->assertOk();
+        $drill = $response->viewData('drilldown');
+
+        $this->assertCount(3, $drill); // 1 real (not yet synced - still counted) + 2 generic synthetic
+        $byLabel = collect($drill)->groupBy('label');
+        $this->assertCount(1, $byLabel['Real']);
+        $this->assertCount(2, $byLabel['Synthetic']);
+    }
+
+    public function test_generic_synthetic_fallback_is_suppressed_once_the_new_industrys_real_count_reaches_3(): void
+    {
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+        \App\Models\AdsAccount::create(['industry' => 'Automotive', 'currency' => 'HUF', 'ads_api_key' => 'sk-automotive-1']);
+        \App\Models\AdsAccount::create(['industry' => 'Automotive', 'currency' => 'HUF', 'ads_api_key' => 'sk-automotive-2']);
+        \App\Models\AdsAccount::create(['industry' => 'Automotive', 'currency' => 'HUF', 'ads_api_key' => 'sk-automotive-3']);
+
+        $response = $this->get('/?industry=Automotive')->assertOk();
+        $drill = $response->viewData('drilldown');
+
+        $this->assertCount(3, $drill);
+        $this->assertTrue(collect($drill)->every(fn ($a) => $a['label'] === 'Real')); // the generic fallback is gone, same Rule-of-3 filter as SyntheticSource's own industries
+    }
+
+    public function test_footer_shows_the_configured_eur_and_usd_exchange_rates(): void
+    {
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+        config(['ads.exchange_rates_to_huf' => ['HUF' => 1.0, 'EUR' => 365.8, 'USD' => 326.64]]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Exchange rate:')
+            ->assertSee('1 EUR =')
+            ->assertSee('<span class="rate-value">365.80</span>', false)
+            ->assertSee('1 USD =')
+            ->assertSee('<span class="rate-value">326.64</span>', false);
+    }
+
+    public function test_footer_reflects_a_changed_exchange_rate_not_a_hardcoded_value(): void
+    {
+        // Proves the footer is genuinely dynamic (pulled from the same
+        // ExchangeRateProvider the rest of the dashboard uses), not a
+        // literal string that happens to match the usual fallback.
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+        config(['ads.exchange_rates_to_huf' => ['HUF' => 1.0, 'EUR' => 999.99, 'USD' => 111.11]]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('<span class="rate-value">999.99</span>', false)
+            ->assertSee('<span class="rate-value">111.11</span>', false);
+    }
+
+    public function test_footer_renders_consistently_with_an_industry_selected(): void
+    {
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+        config(['ads.exchange_rates_to_huf' => ['HUF' => 1.0, 'EUR' => 400.0, 'USD' => 350.0]]);
+
+        $this->get('/?industry=Health')
+            ->assertOk()
+            ->assertSee('<span class="rate-value">400.00</span>', false);
+    }
+
+    public function test_footer_omits_a_currency_with_no_configured_rate_rather_than_showing_a_misleading_zero(): void
+    {
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);
+        config(['ads.exchange_rates_to_huf' => ['HUF' => 1.0, 'EUR' => 400.0]]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('<span class="rate-value">400.00</span>', false)
+            ->assertDontSee('USD');
     }
 }
