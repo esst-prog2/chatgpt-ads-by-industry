@@ -54,6 +54,20 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Forces route()/url() to generate https:// URLs even though the local
+    // dev server itself only ever speaks plain http. Needed only when
+    // running through an HTTPS-terminating tunnel (e.g. `npx localtunnel`,
+    // see README.md "LAN access via a tunnel"): the tunnel client is a raw
+    // TCP pipe with no X-Forwarded-Proto header, so Laravel has no way to
+    // know the public visitor connected over https - without this, the
+    // Google OAuth redirect_uri it generates would be http://..., which
+    // won't match the https://... redirect URI Google requires you to
+    // register (Google only accepts https for any non-localhost domain).
+    // Leave this off for plain localhost/LAN-IP use, where the dev server
+    // genuinely has no TLS and generated URLs should stay http. See
+    // PLANNING_LOG.md 2026-11-02.
+    'force_https_urls' => (bool) env('FORCE_HTTPS_URLS', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

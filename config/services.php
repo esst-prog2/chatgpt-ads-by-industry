@@ -45,6 +45,23 @@ return [
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        // 'redirect' is never actually USED any more - GoogleAuthController
+        // ::callbackUrl() always overrides it per request via Socialite's
+        // ->redirectUrl(), since a single static value could only ever
+        // match one host (breaking the moment the app is reached via a
+        // different one - localhost vs. a LAN IP vs. a tunnel), and a
+        // config file is the wrong place for request-dependent dynamism
+        // anyway (`php artisan config:cache` would freeze whatever a
+        // request-derived value happened to be at cache time). The key
+        // still has to be PRESENT here though, with some value, even an
+        // empty one - confirmed by reading Socialite's SocialiteManager::
+        // buildProvider() source, not assumed: it throws
+        // DriverMissingConfigurationException the moment this array key is
+        // simply absent, checked via array_keys() BEFORE the controller
+        // ever gets a chance to override it with the real, dynamic value
+        // (found the hard way, live: removing this key outright broke
+        // Google Sign-In completely, including from localhost). See
+        // README.md "LAN access" and PLANNING_LOG.md 2026-11-02.
         'redirect' => env('GOOGLE_REDIRECT_URI'),
         'allowed_domain' => env('ALLOWED_GOOGLE_DOMAIN'),
         'admin_emails' => array_filter(array_map('trim', explode(',', env('ADMIN_EMAILS', '')))),
