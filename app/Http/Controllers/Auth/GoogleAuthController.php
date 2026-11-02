@@ -40,14 +40,17 @@ class GoogleAuthController extends Controller
             $params['prompt'] = 'select_account';
         }
 
-        return Socialite::driver('google')->with($params)->redirect();
+        return Socialite::driver('google')
+            ->redirectUrl($this->callbackUrl())
+            ->with($params)
+            ->redirect();
     }
 
     public function callback(): RedirectResponse
     {
         try {
             /** @var SocialiteUser $googleUser */
-            $googleUser = Socialite::driver('google')->user();
+            $googleUser = Socialite::driver('google')->redirectUrl($this->callbackUrl())->user();
         } catch (InvalidStateException) {
             // Socialite stores a one-time 'state' value in the session during
             // redirect() and consumes (pulls) it here - hitting this callback
@@ -99,5 +102,27 @@ class GoogleAuthController extends Controller
         $request->session()->put('force_google_reauth', true);
 
         return redirect()->route('login');
+    }
+
+    /**
+     * The redirect_uri sent to Google in both the authorization request
+     * (redirect()) and the token-exchange request (callback()'s user() call,
+     * which must match exactly per OAuth2) - deliberately NOT a static
+     * GOOGLE_REDIRECT_URI config value: route()/url() resolve from the
+     * CURRENT request's own Host header (Illuminate\Http\Request::root()),
+     * not config('app.url'), confirmed by reading Laravel's UrlGenerator
+     * source rather than assumed. This is what lets the exact same running
+     * server work correctly whether reached via localhost or a LAN IP,
+     * without any app-side config change - but Google itself still requires
+     * each exact host you use to be separately registered as an Authorized
+     * redirect URI in Google Cloud Console (see README.md "LAN access");
+     * that external registration step is a hard OAuth2 requirement, not
+     * something any client-side code can work around (see PLANNING_LOG.md
+     * 2026-11-01's org_internal research for the same kind of Google-side
+     * boundary).
+     */
+    private function callbackUrl(): string
+    {
+        return route('auth.google.callback');
     }
 }

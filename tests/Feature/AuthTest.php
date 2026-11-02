@@ -171,6 +171,96 @@ class AuthTest extends TestCase
         $this->assertStringNotContainsString('prompt=', $response->headers->get('Location'));
     }
 
+    public function test_login_redirect_still_works_when_google_redirect_uri_env_var_is_unset(): void
+    {
+        // Regression test for a real bug found live, not in this suite:
+        // setUp() above always sets 'services.google.redirect' to a dummy
+        // value, which masked this from ever being exercised here. The real
+        // ALLOWED_EXTERNAL_EMAILS... no, GOOGLE_REDIRECT_URI env var is
+        // genuinely unset now (removed from .env/.env.example deliberately,
+        // since it's dynamically computed per request instead - see
+        // config/services.php's own comment) - env('GOOGLE_REDIRECT_URI')
+        // then evaluates to null, which is exactly what this simulates.
+        // Socialite's SocialiteManager::buildProvider() only requires the
+        // ARRAY KEY 'redirect' to be PRESENT (checked via array_keys(),
+        // confirmed by reading its source, not assumed) - it tolerates a
+        // null/empty VALUE just fine, which is why config/services.php
+        // keeps `'redirect' => env('GOOGLE_REDIRECT_URI')` as a key that's
+        // always present even though its value is never actually used (see
+        // GoogleAuthController::callbackUrl(), which always overrides it).
+        config(['services.google.redirect' => null]);
+
+        $response = $this->get('/auth/google/redirect');
+
+        $response->assertRedirect();
+        $this->assertStringContainsString(
+            'redirect_uri='.urlencode(route('auth.google.callback')),
+            $response->headers->get('Location')
+        );
+    }
+
+    public function test_the_google_redirect_uri_matches_the_named_callback_route_exactly(): void
+    {
+        $response = $this->get('/auth/google/redirect');
+
+        $this->assertStringContainsString(
+            'redirect_uri='.urlencode(route('auth.google.callback')),
+            $response->headers->get('Location')
+        );
+    }
+
+    public function test_the_google_redirect_uri_uses_https_when_force_https_urls_is_active(): void
+    {
+        // Regression test for a real gap found while adding tunnel support
+        // (README.md "LAN access via a tunnel", PLANNING_LOG.md 2026-11-02):
+        // a tunnel client like `npx localtunnel` is a raw TCP pipe with no
+        // X-Forwarded-Proto header, so without forcing the scheme, route()
+        // would generate http://... even though the public visitor actually
+        // connected over https://... - and Google rejects a redirect_uri
+        // that doesn't exactly match what's registered (https required for
+        // any non-localhost host). This simulates what
+        // AppServiceProvider::boot() does when config('app.force_https_urls')
+        // is true, without booting a second application instance. Asserts
+        // against route()'s own live output rather than a hardcoded host:
+        // PHPUnit's test HTTP client resolves the dispatched request's URL
+        // from config('app.url') before the request object exists
+        // (MakesHttpRequests::prepareUrlForRequest()), so a custom Host
+        // header passed here wouldn't actually reach route() the way a real
+        // request's Host header does (same harness limitation documented
+        // for test_the_google_redirect_uri_matches_the_named_callback_route_exactly
+        // above) - what's actually under test is that forcing the scheme
+        // works at all, confirmed by asserting route() itself now starts
+        // with https://.
+        \Illuminate\Support\Facades\URL::forceScheme('https');
+
+        $this->assertStringStartsWith('https://', route('auth.google.callback'));
+
+        $response = $this->get('/auth/google/redirect');
+
+        $this->assertStringContainsString(
+            'redirect_uri='.urlencode(route('auth.google.callback')),
+            $response->headers->get('Location')
+        );
+    }
+
+    public function test_the_google_redirect_uri_ignores_a_stale_services_google_redirect_config_value(): void
+    {
+        // Proves the old static-config mechanism is genuinely gone, not
+        // just coincidentally unused: a deliberately wrong leftover value in
+        // services.google.redirect must have zero effect on what's actually
+        // sent to Google now (see GoogleAuthController::callbackUrl(), which
+        // no longer reads this key at all).
+        config(['services.google.redirect' => 'http://totally-different-host.example/callback']);
+
+        $response = $this->get('/auth/google/redirect');
+
+        $this->assertStringNotContainsString('totally-different-host.example', $response->headers->get('Location'));
+        $this->assertStringContainsString(
+            'redirect_uri='.urlencode(route('auth.google.callback')),
+            $response->headers->get('Location')
+        );
+    }
+
     public function test_admin_panel_is_forbidden_for_a_viewer(): void
     {
         $this->actingAs(User::factory()->create(['role' => UserRole::Viewer]))

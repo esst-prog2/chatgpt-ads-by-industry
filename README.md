@@ -55,7 +55,79 @@ ChatGPT Ads API: <https://developers.openai.com/ads>
 2.  Optional: put a real ChatGPT Ads API key in `.env` as `ADS_API_KEY` (first real account) and/or `ADS_API_KEY_2` (second real account, both mapped to Education & Careers). Each key maps to its own account automatically (see `config/ads.php`, `App\Data\RealAdsSource::fromConfig()`); without any key, the dashboard runs on the synthetic accounts alone. A key that is rejected by the API still shows a notice; a key that is simply absent does not, since an account not yet onboarded isn't a failure.
 3.  `php artisan serve`, then open <http://127.0.0.1:8000>.
 4.  `php artisan test` runs the tests.
-5.  `php artisan serve --host=0.0.0.0 --port=8000` , then open <http://:8000> for local network testing
+
+
+### LAN access via a tunnel 
+
+Google Cloud Console will not accept a raw LAN IP (like
+`192.168.1.50`) as an Authorized redirect URI at all - it requires the
+host to be `localhost`/`127.0.0.1`, or a domain ending in a valid public
+top-level domain (`.com`, `.org`, etc.). A **tunnel** gives you a real
+public hostname instead, which Google does accept, and also works from
+outside your own network (e.g. a phone on cellular data), not just
+same-Wi-Fi devices.
+
+This uses [localtunnel](https://github.com/localtunnel/localtunnel), a
+free tunnel with no signup, via Node's `npx` (already needed for this
+project's frontend build, so nothing extra to install).
+
+1.  Start the server normally (plain `php artisan serve` is enough -
+    the tunnel connects to your machine's own `localhost`, so you don't
+    need `serve:lan` / `--host=0.0.0.0` for this).
+
+2.  In a **separate terminal**, run:
+
+    ```
+    npx localtunnel --port 8000
+    ```
+
+    It prints a URL like `your url is: https://sweet-sloths-visit.loca.lt`
+    - note it down; a free run gets a **random** subdomain each time,
+    so expect this to change on every restart.
+
+3.  Add one line to your `.env`, then restart the `php artisan serve`
+    from step 1:
+
+    ```
+    FORCE_HTTPS_URLS=true
+    ```
+
+    **Why this is needed:** localtunnel's client is a plain TCP relay -
+    it forwards the raw bytes of each request (including the real
+    `Host` header, so the app already knows it's being reached as
+    `sweet-sloths-visit.loca.lt`), but it does *not* add an
+    `X-Forwarded-Proto` header, so the app has no other way to know the
+    public visitor connected over `https://` rather than `http://`.
+    Without this flag, the Google redirect URI the app generates would
+    say `http://`, which Google rejects as not matching the `https://`
+    URI you register in step 4 below. Leave this flag off (the default)
+    for plain localhost or LAN-IP use, where the dev server genuinely
+    has no TLS and generated URLs should stay `http://`. See
+    `config/app.php` and `PLANNING_LOG.md` (2026-11-02) for the full
+    explanation.
+
+4.  **Google Cloud Console, one-time step:** go to
+    [Google Cloud Console](https://console.cloud.google.com/) →
+    **APIs & Services → Credentials** → your OAuth 2.0 Client ID →
+    **Authorized redirect URIs** → **Add URI** → the URL from step 2
+    plus the callback path, e.g.
+    `https://sweet-sloths-visit.loca.lt/auth/google/callback` → **Save**.
+    This is additive, your existing `localhost`/LAN entries stay.
+
+5.  From any device, open the URL from step 2 (e.g.
+    `https://sweet-sloths-visit.loca.lt`). The dashboard, admin panel,
+    and Google Sign-In all work over the tunnel.
+
+6.  **When you're done:** stop the tunnel (`Ctrl+C` in its terminal) and
+    remove (or set to `false`) `FORCE_HTTPS_URLS` in `.env`, then
+    restart `php artisan serve` to go back to normal localhost/LAN use.
+    A running tunnel makes your dev server reachable by anyone who has
+    or guesses the URL, so only run it while you're actually using it.
+
+    Since the free subdomain changes on every restart, you'll need to
+    repeat step 4 with the new URL each time you start a fresh tunnel
+    (old, unused entries can be deleted from Console whenever you like,
+    but don't have to be - they just stop being used).
 
 ## 7. Data Architecture & MVP Validation (HW4 Spike)
 

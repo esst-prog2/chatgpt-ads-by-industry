@@ -19,6 +19,14 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Pinned, not left to whatever the real .env's APP_URL currently
+             is (a tunnel URL, a LAN IP, localhost - it changes) - several
+             tests assert on url()/route()-derived values (e.g. the Google
+             OAuth redirect_uri, see GoogleAuthController::callbackUrl() and
+             PLANNING_LOG.md 2026-11-02), and without this override those
+             assertions would silently depend on whatever machine/moment the
+             suite happens to run on, not a stable, known value. -->
+        <env name="APP_URL" value="http://localhost"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
