@@ -14,6 +14,16 @@ use RuntimeException;
  * AdsAccountSyncer can call the exact same logic for database-registered
  * accounts (app/Models/AdsAccount) without duplicating the pagination/field-
  * validation/campaign-numbering rules in two places.
+ *
+ * Deliberately always a live, uncached call here - caching belongs to each
+ * caller's own usage pattern, not this shared low-level fetch: RealAdsSource
+ * caches it (PLANNING_LOG.md 2026-11-05) because it's called repeatedly with
+ * the same (account, range) on every dashboard render, where some staleness
+ * is fine; AdsAccountSyncer must NEVER get a cached result here, since the
+ * entire point of calling sync() again is to pick up changed live data (see
+ * its own test, test_a_second_sync_replaces_the_first_rather_than_accumulating
+ * - caching at this shared level broke that test, caught by running the
+ * suite rather than assumed safe).
  */
 final class AdsApiClient
 {

@@ -131,6 +131,28 @@ return [
     |
     */
 
-    'serializable_classes' => false,
+    // Only App\Data\PerformanceRecord is allowlisted (RealAdsSource caches
+    // a list of these - see PLANNING_LOG.md 2026-11-05), not left at the
+    // framework default of `false` and not widened to `true` (every class):
+    // this is a plain, readonly value object with no behavior and no
+    // external resources, so allowing it specifically doesn't reopen the
+    // gadget-chain risk this setting exists to prevent for every other
+    // class in the app. Found the hard way, live: leaving this at `false`
+    // while caching these objects doesn't throw at write time - it silently
+    // unserializes them back as broken __PHP_Incomplete_Class stand-ins on
+    // every cache hit, which then blew up inside Aggregator the moment it
+    // tried to read a property off one.
+    // Only App\Data\PerformanceRecord is allowlisted (RealAdsSource caches
+    // a list of these - see PLANNING_LOG.md 2026-11-05), not left at the
+    // framework default of `false` and not widened to `true` (every class):
+    // this is a plain, readonly value object with no behavior and no
+    // external resources, so allowing it specifically doesn't reopen the
+    // gadget-chain risk this setting exists to prevent for every other
+    // class in the app. Found the hard way, live: leaving this at `false`
+    // while caching these objects doesn't throw at write time - it silently
+    // unserializes them back as broken __PHP_Incomplete_Class stand-ins on
+    // every cache hit, which then blew up inside Aggregator the moment it
+    // tried to read a property off one.
+    'serializable_classes' => [\App\Data\PerformanceRecord::class],
 
 ];

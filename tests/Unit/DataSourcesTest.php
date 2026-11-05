@@ -186,6 +186,44 @@ class DataSourcesTest extends TestCase
         Http::assertSent(fn ($r) => ($r->data()['after'] ?? null) === 'cursor-1');
     }
 
+    public function test_real_source_caches_the_same_account_and_date_range_instead_of_re_fetching(): void
+    {
+        // Regression test for the fix that made the dashboard fast again
+        // (PLANNING_LOG.md 2026-11-05): previously every dashboard render
+        // re-fetched every real account from the live Ads API with no
+        // caching at all. A second call for the exact same (account, date
+        // range) must now be served from cache, not a second live request.
+        Http::fake(['*' => Http::response(['data' => [[
+            'campaign_id' => 'cmpn_1', 'campaign_name' => 'Spring', 'readable_time' => '2026-09-20',
+            'impressions' => 1200, 'clicks' => 36, 'spend' => 18.42,
+        ]], 'has_more' => false])]);
+
+        $source = $this->realSource();
+        $first = $source->records('2026-09-20', '2026-09-20');
+        $second = $source->records('2026-09-20', '2026-09-20');
+
+        $this->assertEquals($first, $second);
+        Http::assertSentCount(1);
+    }
+
+    public function test_real_source_fetches_fresh_for_a_different_date_range(): void
+    {
+        // The cache key includes the date range, so two different ranges
+        // for the same account must not collide - each gets its own live
+        // fetch, proven here by a sequence where a shared cache key would
+        // otherwise serve the first range's stale response for the second.
+        $row = fn (string $date) => ['campaign_id' => 'a', 'campaign_name' => 'A', 'readable_time' => $date, 'impressions' => 10, 'clicks' => 1, 'spend' => 1.0];
+        Http::fakeSequence()
+            ->push(['data' => [$row('2026-09-20')], 'has_more' => false])
+            ->push(['data' => [$row('2026-09-21')], 'has_more' => false]);
+
+        $source = $this->realSource();
+        $source->records('2026-09-20', '2026-09-20');
+        $source->records('2026-09-21', '2026-09-21');
+
+        Http::assertSentCount(2);
+    }
+
     public function test_real_source_treats_days_without_data_as_empty_not_zero(): void
     {
         Http::fake(['*' => Http::response(['data' => [

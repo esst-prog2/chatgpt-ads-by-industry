@@ -6,6 +6,7 @@ use App\Data\DbRegisteredAdsSource;
 use App\Models\AdsAccount;
 use App\Models\AdsAccountPerformanceRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DbRegisteredAdsSourceTest extends TestCase
@@ -49,5 +50,45 @@ class DbRegisteredAdsSourceTest extends TestCase
     public function test_records_returns_empty_when_no_accounts_are_registered(): void
     {
         $this->assertSame([], (new DbRegisteredAdsSource)->records('2026-10-01', '2026-10-31'));
+    }
+
+    public function test_accounts_and_records_on_the_same_instance_query_ads_accounts_only_once(): void
+    {
+        // Regression test (PLANNING_LOG.md 2026-11-05): DashboardService::
+        // build() calls accounts() then records() on the same instance
+        // every request - previously each independently ran its own
+        // AdsAccount::all(), querying the table twice for no reason.
+        AdsAccount::create(['industry' => 'Health', 'currency' => 'HUF', 'ads_api_key' => 'sk-key-1']);
+        AdsAccount::create(['industry' => 'Health', 'currency' => 'HUF', 'ads_api_key' => 'sk-key-2']);
+        $source = new DbRegisteredAdsSource;
+
+        DB::enableQueryLog();
+        $source->accounts();
+        $source->records('2026-10-01', '2026-10-31');
+        $adsAccountQueries = array_filter(DB::getQueryLog(), fn ($q) => str_contains($q['query'], '"ads_accounts"'));
+        DB::disableQueryLog();
+
+        $this->assertCount(1, $adsAccountQueries);
+    }
+
+    public function test_records_with_multiple_accounts_runs_one_combined_query_not_one_per_account(): void
+    {
+        // Regression test (PLANNING_LOG.md 2026-11-05): previously records()
+        // ran one performanceRecords() query per account in a loop.
+        foreach (range(1, 3) as $n) {
+            $account = AdsAccount::create(['industry' => 'Health', 'currency' => 'HUF', 'ads_api_key' => "sk-key-{$n}"]);
+            AdsAccountPerformanceRecord::create([
+                'ads_account_id' => $account->id, 'campaign_id' => 'c1', 'campaign' => 'Campaign #1',
+                'date' => '2026-10-15', 'impressions' => 10, 'clicks' => 1, 'spend' => 1.0, 'currency' => 'HUF',
+            ]);
+        }
+
+        DB::enableQueryLog();
+        $records = (new DbRegisteredAdsSource)->records('2026-10-01', '2026-10-31');
+        $recordQueries = array_filter(DB::getQueryLog(), fn ($q) => str_contains($q['query'], '"ads_account_performance_records"'));
+        DB::disableQueryLog();
+
+        $this->assertCount(3, $records); // all 3 accounts' data is still present
+        $this->assertCount(1, $recordQueries); // but fetched in one query, not three
     }
 }
