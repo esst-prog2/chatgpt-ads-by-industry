@@ -115,6 +115,37 @@ class DashboardTest extends TestCase
         $this->assertCount(6, $box['Education & Careers']['items']); // 5 synthetic + 1 real campaign
     }
 
+    public function test_dashboard_renders_correctly_from_cache_when_using_the_real_database_cache_store(): void
+    {
+        // Regression test for a real bug found live, not by the rest of
+        // this suite (PLANNING_LOG.md 2026-11-05): the test environment's
+        // CACHE_STORE is 'array' (phpunit.xml), which stores values as
+        // plain in-memory PHP references - it never actually serializes
+        // anything, so it couldn't have caught this. The real app's
+        // CACHE_STORE is 'database' (.env), which does serialize/unserialize
+        // through PHP's native functions - and Laravel's database cache
+        // store defaults to disallowing ALL objects on unserialize
+        // (config('cache.serializable_classes'), a gadget-chain-attack
+        // guard), so caching a list<PerformanceRecord> silently produced
+        // broken __PHP_Incomplete_Class stand-ins on every cache hit
+        // instead of throwing - confirmed live via a plain PHP script
+        // outside this suite, not assumed. Fixed by allowlisting that one
+        // class in config/cache.php. This test forces the real 'database'
+        // store so a future change can't quietly reintroduce the gap by
+        // only ever running against the test suite's 'array' store.
+        config(['cache.default' => 'database']);
+        config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => 'test-key', 'currency' => 'HUF']]]);
+        $yesterday = CarbonImmutable::yesterday()->toDateString();
+        Http::fake(['*' => Http::response(['data' => [$this->realRow($yesterday, imp: 1000, clk: 20, spend: 10.0)], 'has_more' => false])]);
+
+        $first = $this->get('/')->viewData('industryTotals');
+        $second = $this->get('/')->viewData('industryTotals');
+
+        $this->assertSame($first['Education & Careers']['impressions'], $second['Education & Careers']['impressions']);
+        $this->assertGreaterThan(0, $second['Education & Careers']['impressions']);
+        Http::assertSentCount(1);
+    }
+
     public function test_metric_switch_changes_plotted_values(): void
     {
         config(['ads.accounts' => [['id' => 'real-account-1', 'api_key' => null]]]);

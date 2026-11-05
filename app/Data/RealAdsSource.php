@@ -3,6 +3,8 @@
 namespace App\Data;
 
 use App\Services\AdsApiClient;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
 /**
@@ -78,6 +80,21 @@ final class RealAdsSource implements PerformanceSource
      * campaign-numbering logic for database-registered accounts) - this
      * method's own behavior is unchanged, confirmed by the existing test
      * suite passing unmodified after the extraction.
+     *
+     * Cached per (account, date range) since 2026-11-05 (PLANNING_LOG.md):
+     * previously every single dashboard page load re-fetched every real
+     * account from the live Ads API with no caching at all, which is why
+     * the dashboard was slow. Deliberately cached here, not inside
+     * AdsApiClient itself: that method is also called directly by
+     * AdsAccountSyncer, where caching would silently defeat the entire
+     * point of re-syncing (getting a fresh fetch to pick up changed live
+     * data) - confirmed by this exact scenario breaking
+     * AdsAccountSyncerTest::test_a_second_sync_replaces_the_first_rather_than_accumulating
+     * when the cache was first added at that shared, lower level instead.
+     * Two TTL tiers, not one flat value: a range entirely before today is
+     * immutable from this app's perspective, so it's safe to cache far
+     * longer than a range that includes today, which is still accruing new
+     * clicks/spend throughout the day.
      */
     public function records(string $from, string $to): array
     {
@@ -85,8 +102,16 @@ final class RealAdsSource implements PerformanceSource
             throw new RuntimeException('no API key is configured');
         }
 
-        return AdsApiClient::fetchInsights(
-            $this->accountId, $this->apiKey, $this->currency, $from, $to, $this->displayLabel
+        $ttl = Carbon::parse($to)->lt(Carbon::today())
+            ? config('ads.insights_cache_ttl.historical_seconds')
+            : config('ads.insights_cache_ttl.live_seconds');
+
+        return Cache::remember(
+            "ads_api_insights:{$this->accountId}:{$from}:{$to}",
+            $ttl,
+            fn () => AdsApiClient::fetchInsights(
+                $this->accountId, $this->apiKey, $this->currency, $from, $to, $this->displayLabel
+            )
         );
     }
 }

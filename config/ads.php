@@ -62,4 +62,19 @@ return [
         'EUR' => (float) env('EUR_TO_HUF_RATE', 400.0),
         'USD' => (float) env('USD_TO_HUF_RATE', 350.0),
     ],
+
+    // How long AdsApiClient::fetchInsights() caches one (account, date
+    // range) result before calling the live Ads API again - previously
+    // there was no caching at all here, so every dashboard page load
+    // re-fetched every real account from the live API, which is why the
+    // dashboard was slow (PLANNING_LOG.md 2026-11-05). Two tiers, not one
+    // flat TTL: a range entirely before today is immutable from this app's
+    // perspective (once a day is over, its ad performance doesn't
+    // retroactively change), so it's safe to cache far longer than a range
+    // that includes today, which is still accruing new clicks/spend
+    // throughout the day and needs to stay comparatively fresh.
+    'insights_cache_ttl' => [
+        'historical_seconds' => (int) env('ADS_API_HISTORICAL_CACHE_TTL_SECONDS', 86400),
+        'live_seconds' => (int) env('ADS_API_LIVE_CACHE_TTL_SECONDS', 300),
+    ],
 ];

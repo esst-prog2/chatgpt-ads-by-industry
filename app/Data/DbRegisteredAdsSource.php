@@ -3,6 +3,8 @@
 namespace App\Data;
 
 use App\Models\AdsAccount;
+use App\Models\AdsAccountPerformanceRecord;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Feeds the dashboard from the database-registered AdsAccount rows'
@@ -20,6 +22,16 @@ use App\Models\AdsAccount;
  */
 final class DbRegisteredAdsSource implements PerformanceSource
 {
+    /**
+     * Memoized across accounts()/records() - DashboardService::build()
+     * calls both on the same instance every request, and previously each
+     * independently ran its own AdsAccount::all() (PLANNING_LOG.md
+     * 2026-11-05), querying the same table twice for no reason.
+     *
+     * @var Collection<int, AdsAccount>|null
+     */
+    private ?Collection $accounts = null;
+
     public function label(): string
     {
         return 'Real';
@@ -29,7 +41,7 @@ final class DbRegisteredAdsSource implements PerformanceSource
     public function accounts(): array
     {
         $accounts = [];
-        foreach (AdsAccount::all() as $account) {
+        foreach ($this->loadAccounts() as $account) {
             // Anonymized here too, consistent with every other real account
             // on the dashboard - the admin's own "Account #N" numbering
             // (resources/views/admin/index.blade.php) is a separate,
@@ -45,32 +57,41 @@ final class DbRegisteredAdsSource implements PerformanceSource
     /** @return list<PerformanceRecord> */
     public function records(string $from, string $to): array
     {
-        $records = [];
-        foreach (AdsAccount::all() as $account) {
-            // whereDate(), not whereBetween() on the raw column: the 'date'
-            // cast stores "Y-m-d 00:00:00" (Eloquent's date format default),
-            // not plain "Y-m-d" - a raw string whereBetween against "Y-m-d"
-            // bounds silently excludes a row whose date exactly equals $to
-            // (confirmed the hard way: "2026-10-31 00:00:00" sorts AFTER the
-            // plain string "2026-10-31" lexicographically). whereDate() casts
-            // the column back to just its date part before comparing.
-            $query = $account->performanceRecords()
-                ->whereDate('date', '>=', $from)
-                ->whereDate('date', '<=', $to);
-            foreach ($query->get() as $row) {
-                $records[] = new PerformanceRecord(
-                    $account->internalId(),
-                    $row->campaign_id,
-                    $row->campaign,
-                    $row->date->toDateString(),
-                    $row->impressions,
-                    $row->clicks,
-                    $row->spend,
-                    $row->currency,
-                );
-            }
+        $accounts = $this->loadAccounts();
+        if ($accounts->isEmpty()) {
+            return [];
         }
 
-        return $records;
+        // One combined query across every account, not one query per
+        // account in a loop (PLANNING_LOG.md 2026-11-05) - the result is
+        // grouped back by ads_account_id in PHP via $accounts->find()
+        // below. whereDate(), not whereBetween() on the raw column: the
+        // 'date' cast stores "Y-m-d 00:00:00" (Eloquent's date format
+        // default), not plain "Y-m-d" - a raw string whereBetween against
+        // "Y-m-d" bounds silently excludes a row whose date exactly equals
+        // $to (confirmed the hard way: "2026-10-31 00:00:00" sorts AFTER
+        // the plain string "2026-10-31" lexicographically). whereDate()
+        // casts the column back to just its date part before comparing.
+        $rows = AdsAccountPerformanceRecord::whereIn('ads_account_id', $accounts->modelKeys())
+            ->whereDate('date', '>=', $from)
+            ->whereDate('date', '<=', $to)
+            ->get();
+
+        return $rows->map(fn (AdsAccountPerformanceRecord $row) => new PerformanceRecord(
+            $accounts->find($row->ads_account_id)->internalId(),
+            $row->campaign_id,
+            $row->campaign,
+            $row->date->toDateString(),
+            $row->impressions,
+            $row->clicks,
+            $row->spend,
+            $row->currency,
+        ))->values()->all();
+    }
+
+    /** @return Collection<int, AdsAccount> */
+    private function loadAccounts(): Collection
+    {
+        return $this->accounts ??= AdsAccount::all();
     }
 }
