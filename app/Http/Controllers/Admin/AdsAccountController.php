@@ -16,15 +16,16 @@ use Throwable;
 
 class AdsAccountController extends Controller
 {
-    private const CURRENCIES = ['USD', 'EUR', 'HUF'];
-
     private const DUPLICATE_MESSAGE = 'This API key is already registered - each Ads API key identifies one account, so it can only be added once.';
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'industry' => ['required', Rule::in(Industries::onboardable())],
-            'currency' => ['required', Rule::in(self::CURRENCIES)],
+            // Validated against the same single source of truth the admin
+            // view's currency dropdowns use - config('ads.exchange_rates_to_huf')'s
+            // keys, not a separately maintained list (PLANNING_LOG.md 2026-11-07).
+            'currency' => ['required', Rule::in(array_keys(config('ads.exchange_rates_to_huf')))],
             'ads_api_key' => ['required', 'string'],
         ]);
 
@@ -85,7 +86,7 @@ class AdsAccountController extends Controller
         // not editing it in place. Only industry/currency are editable.
         $data = $request->validate([
             'industry' => ['required', Rule::in(Industries::onboardable())],
-            'currency' => ['required', Rule::in(self::CURRENCIES)],
+            'currency' => ['required', Rule::in(array_keys(config('ads.exchange_rates_to_huf')))],
         ]);
 
         $adsAccount->update($data);

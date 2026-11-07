@@ -27,6 +27,15 @@
              assertions would silently depend on whatever machine/moment the
              suite happens to run on, not a stable, known value. -->
         <env name="APP_URL" value="http://localhost"/>
+        <!-- Same reasoning as APP_URL above, caught the hard way: this flag
+             isn't normally set (see README.md "LAN access via a tunnel"),
+             but a real .env can have it left on from testing the tunnel
+             feature - without pinning it here, the suite would silently run
+             every url()/route() assertion under forced https depending on
+             whatever state a real .env happens to be in, exactly the
+             hermeticity gap APP_URL already had. See PLANNING_LOG.md
+             2026-11-07. -->
+        <env name="FORCE_HTTPS_URLS" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
