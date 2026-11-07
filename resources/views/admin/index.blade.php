@@ -234,7 +234,7 @@
                                      an edit should override onto an existing
                                      EUR/USD account. --}}
                                 <select class="edit-only" form="{{ $formId }}" name="currency">
-                                    @foreach (['USD', 'EUR', 'HUF'] as $c)
+                                    @foreach ($currencies as $c)
                                         <option value="{{ $c }}" @selected($c === $row['currency'])>{{ $c }}</option>
                                     @endforeach
                                 </select>
@@ -313,9 +313,9 @@
                 <div class="field">
                     <label for="add-account-currency">Currency</label>
                     <select id="add-account-currency" name="currency">
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="HUF" selected>HUF</option>
+                        @foreach ($currencies as $c)
+                            <option value="{{ $c }}" @selected($c === 'HUF')>{{ $c }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <button type="submit">Add account</button>

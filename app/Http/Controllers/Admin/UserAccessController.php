@@ -26,6 +26,14 @@ class UserAccessController extends Controller
             'users' => User::orderBy('email')->get(),
             'unifiedAccounts' => $this->unifiedAccounts(),
             'industries' => Industries::onboardable(),
+            // Single source of truth for "currencies this app knows about" -
+            // config('ads.exchange_rates_to_huf')'s keys, not a separately
+            // hardcoded list here or in AdsAccountController: a currency
+            // can't actually be aggregated (Aggregator::toHuf()) without a
+            // configured rate anyway, so that map is already the real
+            // authority on which currencies are usable. See PLANNING_LOG.md
+            // 2026-11-07.
+            'currencies' => array_keys(config('ads.exchange_rates_to_huf')),
         ]);
     }
 
