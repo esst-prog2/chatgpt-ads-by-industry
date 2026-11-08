@@ -4,7 +4,7 @@ ChatGPT Ads has only recently become available for self-service advertising in H
 
 ## 1. The demo
 
-I open the web application in my browser. The date range defaults to the last 28 days and I can change it. The application groups accounts by industry using a local mapping file that uses the official industry list. The dashboard shows a box plot comparing industries, where each point is one campaign, and I can switch the metric between impressions, clicks, spend and CTR. I can select an industry to see the accounts and campaigns that contribute to its results, with each account marked as Real or Synthetic. The data comes from one real ChatGPT Ads account (mapped to Education & Careers) plus synthetic accounts.
+I sign in with my Google account, scoped to the company domain. The dashboard defaults to the last 28 days and compares industries in a box plot, one point per campaign, switchable between impressions, clicks, spend, CTR and CPC. I can drill into an industry to see its accounts and campaigns, each labelled Real or Synthetic, with a footer showing the live HUF exchange rate behind the numbers. Real data comes from six live ChatGPT Ads accounts across four industries, configured in `.env` or added live through a tabbed admin panel that also manages users and roles. Repeat dashboard views load from cache in about 5ms instead of re-fetching the live API every time, and 177 automated tests cover the sign-in, aggregation and account-management logic end to end.
 
 ## 2. The shape
 
