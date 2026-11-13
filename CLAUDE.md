@@ -7,6 +7,7 @@
 - Always use the standardized anonymized labels already established for this project: `real-account-N`, `Education Partner A`, `Education Partner B`, `Professional Services Partner A`, `Professional Services B`, `Health Partner A`.
 - Before committing, always verify no real entity names, personal emails, company suffixes (Kft., Zrt., LLC, Ltd., GmbH, Inc., etc.), or other identifying/private data have been introduced - including inside a note that documents fixing a previous leak; never repeat the leaked value itself when describing its own redaction.
 
-### No automatic commits or pushes
-- Never create a git commit or push changes without the user's explicit approval, given after they've had the chance to review the proposed changes.
-- Always show the proposed changes first and wait for explicit go-ahead before committing or pushing.
+### Commits and pushes
+- Commit after each step, with no separate review-and-approve pause first (changed 2026-11-13 - see PLANNING_LOG.md; the previous rule required explicit approval before every commit). One step = one commit.
+- After each step's commit, add one row to PROCESS.md: the step, what the tool did, and what the user decided.
+- Pushing to a remote is unchanged and still requires the user's explicit approval, given after they've had the chance to review the proposed changes - show the proposed changes first and wait for explicit go-ahead before pushing.
