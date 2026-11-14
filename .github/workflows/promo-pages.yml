@@ -1,0 +1,67 @@
+# Publishes the promo page (public/promo.html) to GitHub Pages at
+# https://<owner>.github.io/<repo>/ - and nothing else from the repository.
+#
+# One-time setup in the repository's GitHub settings:
+#   1. Settings > Pages > Build and deployment > Source: "GitHub Actions".
+#   2. Settings > Secrets and variables > Actions > Variables:
+#      DASHBOARD_URL = the dashboard's public address (e.g. https://dashboard.example.com).
+#      On Pages the page is not served by the app, so the button's relative
+#      link (/?metric=cpc) is rewritten to DASHBOARD_URL/?metric=cpc.
+name: Publish promo page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - public/promo.html
+      - public/images/brand-logo.png
+      - public/images/logo_fekv*-09.png
+      - .github/workflows/promo-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: promo-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the site (promo page + logos only)
+        env:
+          DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+        run: |
+          if [ -z "$DASHBOARD_URL" ]; then
+            echo "::error::Set the DASHBOARD_URL repository variable (Settings > Secrets and variables > Actions > Variables) so the page's button can reach the dashboard."
+            exit 1
+          fi
+          mkdir -p _site/images
+          cp public/images/brand-logo.png public/images/logo_fekv*-09.png _site/images/
+          touch _site/.nojekyll
+          python3 - <<'PY'
+          import os
+          url = os.environ["DASHBOARD_URL"].rstrip("/")
+          html = open("public/promo.html", encoding="utf-8").read()
+          old = 'href="/?metric=cpc"'
+          if html.count(old) != 1:
+              raise SystemExit("Expected exactly one dashboard link in public/promo.html")
+          new = 'href="' + url.replace("&", "&amp;").replace('"', "&quot;") + '/?metric=cpc"'
+          open("_site/index.html", "w", encoding="utf-8").write(html.replace(old, new))
+          PY
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
