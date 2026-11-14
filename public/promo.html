@@ -15,7 +15,9 @@
         controller, no sign-in. Anyone with the link can read it, so it holds
         no figures and no client names. The button opens the dashboard on the
         CPC view; guests go through Google sign-in first and land back there
-        (redirect()->intended). Brand tokens copied from
+        (redirect()->intended). Image paths are relative so the same file also
+        works on GitHub Pages (.github/workflows/promo-pages.yml), which swaps
+        the button's link for the DASHBOARD_URL repository variable. Brand tokens copied from
         resources/views/auth/login.blade.php - see DESIGN_AGENT.md.
     -->
     <style>
@@ -65,8 +67,8 @@
 <body>
 <main>
     <div class="intro">
-        <img class="logo logo-light" src="/images/brand-logo.png" alt="Intren">
-        <img class="logo logo-dark" src="/images/logo_fekv%C5%91-09.png" alt="Intren">
+        <img class="logo logo-light" src="images/brand-logo.png" alt="Intren">
+        <img class="logo logo-dark" src="images/logo_fekv%C5%91-09.png" alt="Intren">
 
         <h1>What does ChatGPT Ads cost?</h1>
         <p class="lead">CPC and CTR by industry from ChatGPT Ads accounts we manage, with Synthetic data where an industry has fewer than three real accounts. Use them as a starting point when you size a client's first test budget.</p>
