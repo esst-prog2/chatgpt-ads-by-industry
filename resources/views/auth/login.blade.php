@@ -13,7 +13,7 @@
         @media (prefers-color-scheme: dark) { :root { --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73; --accent:#7C83FF; --accent-hover:#959AFF; --accent-contrast:#19095B; --err:#FF6B81; } }
         * { box-sizing: border-box; }
         body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--fg); font-family:'Montserrat', ui-sans-serif, system-ui, sans-serif; font-weight:300; font-size:15px; }
-        .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:40px; width:100%; max-width:360px; text-align:center; }
+        .card { position:relative; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:40px; width:100%; max-width:360px; text-align:center; }
         .logo { height:48px; width:auto; object-fit:contain; margin-bottom:24px; }
         .logo-dark { display:none; }
         @media (prefers-color-scheme: dark) { .logo-light { display:none; } .logo-dark { display:inline-block; } }
@@ -28,6 +28,9 @@
         }
         .google-btn:hover { background:var(--accent-hover); }
         .google-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        .info-link { position:absolute; top:12px; right:12px; display:inline-flex; padding:6px; color:var(--muted); border-radius:6px; transition:color .15s ease; }
+        .info-link:hover { color:var(--accent); }
+        .info-link:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
     </style>
 </head>
 <body>
@@ -39,6 +42,8 @@
             <p class="error">{{ session('error') }}</p>
         @endif
         <a class="google-btn" href="{{ url('/auth/google/redirect') }}">Sign in with Google</a>
+        {{-- After the button in the DOM so sign-in is the first tab stop; CSS pins it to the card's corner. --}}
+        <x-promo-info-link />
     </div>
 </body>
 </html>
