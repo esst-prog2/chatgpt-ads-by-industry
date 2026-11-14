@@ -25,3 +25,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Impeccable design tool working files (live-mode config, sessions, critique snapshots)
+/.impeccable/
