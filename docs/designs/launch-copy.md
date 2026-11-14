@@ -1,6 +1,7 @@
 # Design: Launch copy for PPC managers (login page + invitation message)
 
-Status: APPROVED (/office-hours 2026-11-14; /autoplan CEO, design and eng reviews 2026-11-14, gate approval p1a)
+Status: SUPERSEDED 2026-11-14 (see PLANNING_LOG.md). Not to be implemented: the login page stays as it was, there is no in-app invite message, and the core app is not changed. The goal is now a separate promo / landing page for PPC colleagues.
+Previous status: APPROVED (/office-hours 2026-11-14; /autoplan CEO, design and eng reviews 2026-11-14, gate approval p1a)
 Branch: main
 Repo: esst-prog2/chatgpt-ads-by-industry
 
