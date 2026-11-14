@@ -44,6 +44,15 @@ class AuthTest extends TestCase
         $this->get('/login')->assertOk()->assertSee('Sign in with Google');
     }
 
+    public function test_login_page_links_to_the_promo_page_with_an_accessible_name(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('href="'.url('promo.html').'"', false)
+            ->assertSee('aria-label="About this dashboard"', false);
+        $this->assertFileExists(public_path('promo.html'));
+    }
+
     public function test_dashboard_redirects_guests_to_login(): void
     {
         $this->get('/')->assertRedirect('/login');
