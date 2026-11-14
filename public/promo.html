@@ -19,8 +19,8 @@
         resources/views/auth/login.blade.php - see DESIGN_AGENT.md.
     -->
     <style>
-        :root { --bg:#F8FAFC; --fg:#19095B; --muted:#6E6B85; --card:#FFFFFF; --line:#E2E8F0; --accent:#0600FF; --accent-hover:#0500CC; --accent-contrast:#FFFFFF; --success:#02B77F; --success-contrast:#19095B; --purple:#5B148B; }
-        @media (prefers-color-scheme: dark) { :root { --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73; --accent:#7C83FF; --accent-hover:#959AFF; --accent-contrast:#19095B; --success:#34d3a8; --success-contrast:#19095B; --purple:#C090E0; } }
+        :root { --bg:#F8FAFC; --fg:#19095B; --muted:#6E6B85; --card:#FFFFFF; --line:#E2E8F0; --accent:#0600FF; --accent-hover:#0500CC; --accent-contrast:#FFFFFF; --success:#02B77F; --success-contrast:#19095B; --real-text:#037A55; --purple:#5B148B; }
+        @media (prefers-color-scheme: dark) { :root { --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73; --accent:#7C83FF; --accent-hover:#959AFF; --accent-contrast:#19095B; --success:#34d3a8; --success-contrast:#19095B; --real-text:#34d3a8; --purple:#C090E0; } }
         * { box-sizing: border-box; }
         ::selection { background:var(--accent); color:var(--accent-contrast); }
         body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; background:var(--bg); color:var(--fg); font-family:'Montserrat', ui-sans-serif, system-ui, sans-serif; font-weight:300; font-size:16px; line-height:1.5; }
@@ -45,7 +45,9 @@
         li { padding:14px 0; border-bottom:1px solid var(--line); }
         li:last-child { border-bottom:0; padding-bottom:0; }
         li strong { font-weight:700; display:block; text-wrap:balance; }
-        .tag { font-size:12px; font-weight:700; padding:1px 8px; border-radius:99px; color:var(--success); border:1px solid var(--success); white-space:nowrap; }
+        .tag { font-size:12px; font-weight:700; padding:1px 8px; border-radius:99px; color:var(--real-text); border:1px solid var(--real-text); white-space:nowrap; }
+        /* --real-text: darker green for the light-mode tag text and border (5.4:1 on
+           white; the brand #02B77F is 2.6:1). Dark mode keeps the brand green. */
         .tag.synthetic { color:var(--purple); border-color:var(--purple); }
         .cta-note { margin:10px 0 0; font-size:14px; color:var(--muted); }
     </style>
@@ -56,14 +58,14 @@
     <img class="logo logo-dark" src="/images/logo_fekv%C5%91-09.png" alt="Intren">
 
     <h1>What does ChatGPT Ads cost?</h1>
-    <p class="lead">CPC and CTR by industry from ChatGPT Ads accounts we manage, topped up with stand-in data where an industry has fewer than three real accounts. Check them before you size a client's first test budget.</p>
+    <p class="lead">CPC and CTR by industry from ChatGPT Ads accounts we manage, with Synthetic data where an industry has fewer than three real accounts. Use them as a starting point when you size a client's first test budget.</p>
 
     <a class="cta" href="/?metric=cpc">Open the dashboard</a>
     <p class="cta-note">Sign in with your company Google account.</p>
 
     <ul>
         <li><strong>Compare industries at a glance</strong>Impressions, clicks, spend, CTR and CPC per industry, for any date range.</li>
-        <li><strong>Plan with Real accounts</strong>Open an industry to see its accounts and campaigns. <span class="tag">Real</span> accounts are ours; <span class="tag synthetic">Synthetic</span> ones are the stand-in data. The chart and totals include both.</li>
+        <li><strong>See which numbers are real</strong>Open an industry to see its accounts and campaigns. <span class="tag">Real</span> accounts are ours; <span class="tag synthetic">Synthetic</span> ones are stand-in data, and the chart and totals include both. Before you quote a number, check whether its industry has any Synthetic accounts.</li>
         <li><strong>Industry totals in HUF</strong>Converted at the exchange rate shown in the dashboard footer. Account and campaign rows stay in their own currency.</li>
     </ul>
 </main>
