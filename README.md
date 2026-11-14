@@ -75,15 +75,26 @@ project's frontend build, so nothing extra to install).
     the tunnel connects to your machine's own `localhost`, so you don't
     need `serve:lan` / `--host=0.0.0.0` for this).
 
-2.  In a **separate terminal**, run:
+2.  In a **separate terminal**, run it with a **fixed name** (recommended):
 
     ```
-    npx localtunnel --port 8000
+    npx localtunnel --port 8000 --subdomain intren-chatgpt-ads
     ```
 
-    It prints a URL like `your url is: https://sweet-sloths-visit.loca.lt`
-    - note it down; a free run gets a **random** subdomain each time,
-    so expect this to change on every restart.
+    It prints `your url is: https://intren-chatgpt-ads.loca.lt` - the
+    same address on every restart, so steps 4 and 7 below are one-time
+    setup. Any lowercase name works; if someone else is using it at that
+    moment, localtunnel silently hands you a random address instead, so
+    check the printed URL each time.
+
+    Without `--subdomain` (`npx localtunnel --port 8000`) you get a
+    **random** address like `https://sweet-sloths-visit.loca.lt` that
+    changes on every restart, and steps 4 and 7 have to be repeated
+    each time.
+
+    The first time a visitor opens a `loca.lt` address, localtunnel shows
+    a one-time "tunnel password" page; the password is the public IP of
+    the machine running the tunnel, as that page explains.
 
 3.  Add one line to your `.env`, then restart the `php artisan serve`
     from step 1:
@@ -124,10 +135,20 @@ project's frontend build, so nothing extra to install).
     A running tunnel makes your dev server reachable by anyone who has
     or guesses the URL, so only run it while you're actually using it.
 
-    Since the free subdomain changes on every restart, you'll need to
-    repeat step 4 with the new URL each time you start a fresh tunnel
-    (old, unused entries can be deleted from Console whenever you like,
+    With a fixed `--subdomain` (step 2) the address stays the same, so
+    there's nothing to redo next time. With a random address you'll need
+    to repeat steps 4 and 7 with the new URL each time you start a fresh
+    tunnel (old, unused Console entries can be deleted whenever you like,
     but don't have to be - they just stop being used).
+
+7.  **Promo page on GitHub Pages, one-time step:** the public promo page
+    (https://esst-prog2.github.io/chatgpt-ads-by-industry/, published by
+    `.github/workflows/promo-pages.yml`) links its "Open the dashboard"
+    button to the `DASHBOARD_URL` repository variable. Set it to the
+    tunnel address from step 2, without a trailing path (GitHub repo →
+    **Settings → Secrets and variables → Actions → Variables**), then
+    re-run the **Publish promo page** workflow from the **Actions** tab.
+    The button only works while the tunnel is running.
 
 ## 7. Data Architecture & MVP Validation (HW4 Spike)
 
