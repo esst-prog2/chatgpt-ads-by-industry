@@ -52,6 +52,10 @@
            white; the brand #02B77F is 2.6:1). Dark mode keeps the brand green. */
         .tag.synthetic { color:var(--purple); border-color:var(--purple); }
         .cta-note { margin:10px 0 0; font-size:14px; color:var(--muted); }
+        /* What the live app adds beyond the public demo: same three-column row as the points. */
+        .full-version { grid-column:1 / -1; margin-top:40px; }
+        .full-version h2 { margin:0; font-size:18px; font-weight:700; line-height:1.3; }
+        .full-version .points { margin-top:16px; }
         /* 30-second narrated promo video (promo-video/), beside the intro. */
         .promo-video { display:block; width:100%; height:auto; aspect-ratio:16 / 9; margin:0; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
         @media (max-width:900px) {
@@ -59,6 +63,8 @@
             main { grid-template-columns:1fr; max-width:620px; padding:24px; }
             .promo-video { margin-top:28px; }
             .points { grid-template-columns:1fr; gap:20px; margin-top:28px; }
+            .full-version { margin-top:28px; }
+            .full-version .points { margin-top:12px; }
         }
     </style>
 </head>
@@ -69,8 +75,8 @@
     <img class="logo logo-dark" src="images/logo_fekv%C5%91-09.png" alt="Intren">
     <h1>What does ChatGPT Ads cost?</h1>
     <p class="lead">CPC and CTR by industry from ChatGPT Ads accounts we manage, with Synthetic data where an industry has fewer than three real accounts. Use them as a starting point when you size a client's first test budget.</p>
-    <a class="cta" href="/?metric=cpc">Open the dashboard</a>
-    <p class="cta-note">Sign in with your company Google account.</p>
+    <a class="cta" href="demo/index.html#metric=cpc">Open the dashboard</a>
+    <p class="cta-note">Note: opens an interactive demo version.</p>
   </div>
   <video class="promo-video" src="promo-video.mp4" poster="promo-video-poster.jpg" controls muted playsinline preload="metadata"
          aria-label="30-second narrated video with matching on-screen captions: from guessing a ChatGPT Ads CPC to checking real campaigns by industry in the dashboard">
@@ -81,6 +87,14 @@
     <li><strong>See which numbers are real</strong>Open an industry to see its accounts and campaigns. <span class="tag">Real</span> accounts are ours; <span class="tag synthetic">Synthetic</span> ones are stand-in data, and the chart and totals include both. Before you quote a number, check whether its industry has any Synthetic accounts.</li>
     <li><strong>Industry totals in HUF</strong>Converted at the exchange rate shown in the dashboard footer. Account and campaign rows stay in their own currency.</li>
   </ul>
+  <section class="full-version" aria-labelledby="full-version-title">
+    <h2 id="full-version-title">In the full version</h2>
+    <ul class="points">
+      <li><strong>Sign in with Google</strong>Secure sign-in with your company Google account; only approved accounts get in.</li>
+      <li><strong>Admin tools</strong>Admins add colleagues, set their role (Admin or Viewer) and remove access.</li>
+      <li><strong>Connect new ad accounts</strong>Admins add a ChatGPT Ads account with its API key, industry and currency; its data syncs right away and every night.</li>
+    </ul>
+  </section>
 </main>
 </body>
 </html>

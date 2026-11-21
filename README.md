@@ -141,14 +141,14 @@ project's frontend build, so nothing extra to install).
     tunnel (old, unused Console entries can be deleted whenever you like,
     but don't have to be - they just stop being used).
 
-7.  **Promo page on GitHub Pages, one-time step:** the public promo page
+7.  **Promo page on GitHub Pages:** the public promo page
     (https://esst-prog2.github.io/chatgpt-ads-by-industry/, published by
-    `.github/workflows/promo-pages.yml`) links its "Open the dashboard"
-    button to the `DASHBOARD_URL` repository variable. Set it to the
-    tunnel address from step 2, without a trailing path (GitHub repo →
-    **Settings → Secrets and variables → Actions → Variables**), then
-    re-run the **Publish promo page** workflow from the **Actions** tab.
-    The button only works while the tunnel is running.
+    `.github/workflows/promo-pages.yml`) opens the static demo dashboard
+    (`public/demo/`, illustrative data, no sign-in), so it needs no tunnel.
+    The `DASHBOARD_URL` repository variable is only used if the promo page
+    links the live app (`href="/?metric=cpc"`); set it to the tunnel address
+    from step 2 in that case (GitHub repo → **Settings → Secrets and
+    variables → Actions → Variables**).
 
 ## 7. Data Architecture & MVP Validation (HW4 Spike)
 
