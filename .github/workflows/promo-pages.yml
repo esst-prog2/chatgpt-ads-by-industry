@@ -66,6 +66,9 @@ jobs:
           if 'href="demo/index.html' not in html:
               raise SystemExit("Expected the promo page's button to link the demo (demo/index.html).")
           open("_site/index.html", "w", encoding="utf-8").write(html)
+          # Also as promo.html, the path it has in the Laravel app, so links such as
+          # the demo's "Back to the promo page" (../promo.html) work on Pages too.
+          open("_site/promo.html", "w", encoding="utf-8").write(html)
           PY
 
       - uses: actions/configure-pages@v5
