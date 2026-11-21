@@ -1,13 +1,15 @@
 # Publishes the promo page (public/promo.html) to GitHub Pages at
-# https://<owner>.github.io/<repo>/ with its logos and promo video - nothing
-# else from the repository.
+# https://<owner>.github.io/<repo>/ with its logos, promo video and the static
+# demo dashboard (public/demo/, illustrative data) - nothing else from the
+# repository.
 #
 # One-time setup in the repository's GitHub settings:
 #   1. Settings > Pages > Build and deployment > Source: "GitHub Actions".
-#   2. Settings > Secrets and variables > Actions > Variables:
-#      DASHBOARD_URL = the dashboard's public address (e.g. https://dashboard.example.com).
-#      On Pages the page is not served by the app, so the button's relative
-#      link (/?metric=cpc) is rewritten to DASHBOARD_URL/?metric=cpc.
+#   2. Optional: Settings > Secrets and variables > Actions > Variables:
+#      DASHBOARD_URL = the live dashboard's public address. Only needed if
+#      promo.html links the live app (href="/?metric=cpc"); such links are
+#      rewritten to DASHBOARD_URL/?metric=cpc. The main button points at the
+#      static demo (demo/index.html) and needs no rewrite.
 name: Publish promo page
 
 on:
@@ -19,6 +21,7 @@ on:
       - public/images/logo_fekv*-09.png
       - public/promo-video.mp4
       - public/promo-video-poster.jpg
+      - public/demo/**
       - .github/workflows/promo-pages.yml
   workflow_dispatch:
 
@@ -44,23 +47,25 @@ jobs:
         env:
           DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
         run: |
-          if [ -z "$DASHBOARD_URL" ]; then
-            echo "::error::Set the DASHBOARD_URL repository variable (Settings > Secrets and variables > Actions > Variables) so the page's button can reach the dashboard."
-            exit 1
-          fi
           mkdir -p _site/images
           cp public/images/brand-logo.png public/images/logo_fekv*-09.png _site/images/
           cp public/promo-video.mp4 public/promo-video-poster.jpg _site/
+          # Static, login-free demo dashboard (illustrative data only; see demo-dashboard/).
+          cp -R public/demo _site/demo
+          test -s _site/demo/index.html && test -s _site/demo/data.js
           touch _site/.nojekyll
           python3 - <<'PY'
           import os
-          url = os.environ["DASHBOARD_URL"].rstrip("/")
+          url = os.environ.get("DASHBOARD_URL", "").rstrip("/")
           html = open("public/promo.html", encoding="utf-8").read()
           old = 'href="/?metric=cpc"'
-          if html.count(old) != 1:
-              raise SystemExit("Expected exactly one dashboard link in public/promo.html")
-          new = 'href="' + url.replace("&", "&amp;").replace('"', "&quot;") + '/?metric=cpc"'
-          open("_site/index.html", "w", encoding="utf-8").write(html.replace(old, new))
+          if old in html:
+              if not url:
+                  raise SystemExit("promo.html links the live dashboard: set the DASHBOARD_URL repository variable.")
+              html = html.replace(old, 'href="' + url.replace("&", "&amp;").replace('"', "&quot;") + '/?metric=cpc"')
+          if 'href="demo/index.html' not in html:
+              raise SystemExit("Expected the promo page's button to link the demo (demo/index.html).")
+          open("_site/index.html", "w", encoding="utf-8").write(html)
           PY
 
       - uses: actions/configure-pages@v5

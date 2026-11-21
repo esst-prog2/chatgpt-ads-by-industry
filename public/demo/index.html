@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Interactive demo · ChatGPT Ads Industry Dashboard</title>
+    <meta name="description" content="Interactive demo of the ChatGPT Ads Industry Dashboard with illustrative snapshot data: invented accounts and figures, not real campaign results.">
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;700&display=swap" rel="stylesheet">
+    <!--
+        Static, login-free demo of the dashboard (resources/views/dashboard.blade.php),
+        published to GitHub Pages next to the promo page. All numbers come from
+        data.js (window.DEMO_DATA, a plain <script>, so it also works opened from
+        disk), exported by demo-dashboard/export-demo-data.php: the app's own
+        DashboardService/Aggregator run over INVENTED demo accounts
+        (demo-dashboard/demo-data.php) - no real accounts, figures or keys.
+        This page only renders that data; it does no aggregation of its own.
+        Styles and chart code mirror the dashboard view.
+    -->
+    <style>
+        :root {
+            --bg:#F8FAFC; --fg:#19095B; --muted:#6E6B85; --card:#FFFFFF; --line:#E2E8F0;
+            --accent:#0600FF; --accent-hover:#0500CC; --accent-contrast:#FFFFFF;
+            --success:#02B77F; --success-contrast:#19095B; --real-text:#037A55; --purple:#5B148B;
+            --warn:#FF9100; --err:#D7263D; --nav-inactive:#19095B;
+            --chart-accent:#0600FF; --chart-fill:rgba(6,0,255,0.22); --chart-grid:rgba(25,9,91,0.08);
+            --chart-tick:#19095B; --chart-median:#19095B;
+            --chart-muted-accent:#6E6B85; --chart-muted-fill:rgba(110,107,133,0.18); --chart-muted-median:#6E6B85;
+            --banner-bg:#19095B; --banner-fg:#FFFFFF; --banner-pill:#FF9100; --banner-pill-fg:#241400;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73;
+                --accent:#7C83FF; --accent-hover:#959AFF; --accent-contrast:#19095B;
+                --success:#34d3a8; --success-contrast:#19095B; --real-text:#34d3a8; --purple:#C090E0;
+                --warn:#FF9100; --err:#FF6B81; --nav-inactive:#94A3B8;
+                --chart-accent:#7C83FF; --chart-fill:rgba(124,131,255,0.45); --chart-grid:rgba(255,255,255,0.12);
+                --chart-tick:#e5e7eb; --chart-median:#ffffff;
+                --chart-muted-accent:#B5B2CC; --chart-muted-fill:rgba(181,178,204,0.22); --chart-muted-median:#B5B2CC;
+                --banner-bg:#0B0626; --banner-fg:#F2F1FA;
+            }
+        }
+        * { box-sizing: border-box; }
+        ::selection { background:var(--accent); color:var(--accent-contrast); }
+        body { margin:0; background:var(--bg); color:var(--fg); font-family:'Montserrat', ui-sans-serif, system-ui, sans-serif; font-weight:300; font-size:15px; line-height:1.5; }
+
+        /* Demo banner: always visible, impossible to mistake for the live app. */
+        .demo-banner { position:sticky; top:0; z-index:10; background:var(--banner-bg); color:var(--banner-fg); padding:12px 16px; }
+        .demo-banner .inner { max-width:1000px; margin:0 auto; display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; font-size:14px; }
+        .demo-pill { background:var(--banner-pill); color:var(--banner-pill-fg); font-weight:700; font-size:13px; letter-spacing:0.04em; padding:3px 12px; border-radius:99px; }
+        .demo-banner strong { color:var(--banner-fg); }
+        .demo-banner a { color:var(--banner-fg); text-decoration:underline; text-underline-offset:3px; margin-left:auto; white-space:nowrap; }
+        .demo-banner a:hover { color:var(--banner-pill); }
+
+        main { max-width:1000px; margin:0 auto; padding:24px 16px; }
+        h1, h2, strong { font-weight:700; color:var(--fg); }
+        h1 { font-size:22px; margin:0; } h2 { font-size:17px; margin:0 0 12px; }
+        .site-header { display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin:0 0 28px; }
+        .site-header .logo { height:64px; width:auto; object-fit:contain; margin:4px 0; }
+        .site-header h1 { flex:1; text-align:right; }
+        .site-header .logo-dark { display:none; }
+        @media (prefers-color-scheme: dark) {
+            .site-header .logo-light { display:none; }
+            .site-header .logo-dark { display:inline-block; }
+        }
+        .account-bar { display:flex; justify-content:flex-end; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin:-20px 0 20px; }
+        .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+        .site-footer { max-width:1000px; margin:12px auto 0; padding:16px 16px 28px; border-top:1px solid var(--line); text-align:center; font-size:12px; color:var(--muted); }
+        .site-footer .rate-value { font-weight:700; color:var(--fg); }
+        .filters { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
+        label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
+        select, button {
+            font:inherit; box-sizing:border-box; height:38px; padding:0 10px; margin:0;
+            border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg);
+            line-height:36px; vertical-align:middle;
+            transition: border-color .15s ease, background-color .15s ease;
+        }
+        select:hover { border-color:var(--accent); }
+        select:focus-visible { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+        table { width:100%; border-collapse:collapse; font-size:14px; }
+        th, td { text-align:right; padding:6px 8px; border-bottom:1px solid var(--line); } th:first-child, td:first-child { text-align:left; }
+        th { font-weight:700; }
+        tbody tr:hover { background:var(--bg); }
+        tr.active td:first-child a { color:var(--accent); font-weight:700; }
+        .tag { font-size:12px; font-weight:700; padding:1px 8px; border-radius:99px; border:1px solid transparent; background:transparent; }
+        .tag.real { color:var(--real-text); border-color:var(--real-text); }
+        .tag.synthetic { color:var(--purple); border-color:var(--purple); }
+        .chart-wrap { position:relative; height:340px; }
+        .table-scroll { overflow-x:auto; }
+        a { color:var(--nav-inactive); text-decoration:none; transition:color .15s ease; }
+        a:hover { color:var(--warn); text-decoration:underline; }
+        a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
+        .muted { color:var(--muted); }
+        .empty-state { color:var(--muted); text-align:center; padding:20px; margin:0; border:1px dashed var(--line); border-radius:10px; }
+
+        /* Demo-only: Real / Synthetic filter for the drill-down. */
+        .drill-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 16px; margin-bottom:12px; }
+        .drill-head h2 { margin:0; }
+        .segmented { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+        .segmented button { height:34px; border:0; border-radius:0; background:var(--card); color:var(--fg); font-weight:700; font-size:13px; padding:0 14px; cursor:pointer; white-space:nowrap; }
+        .segmented button + button { border-left:1px solid var(--line); }
+        .segmented button[aria-pressed="true"] { background:var(--accent); color:var(--accent-contrast); }
+        .segmented button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+    </style>
+</head>
+<body>
+<div class="demo-banner" role="note" aria-label="Demo notice">
+    <div class="inner">
+        <span class="demo-pill">INTERACTIVE DEMO</span>
+        <span><strong>Illustrative snapshot data</strong> · invented accounts and figures, not real campaign results. <span id="snapshot-note"></span></span>
+        <a href="../promo.html">&larr; Back to the promo page</a>
+    </div>
+</div>
+
+<main>
+    <header class="site-header">
+        <img class="logo logo-light" src="../images/brand-logo.png" alt="Intren">
+        <img class="logo logo-dark" src="../images/logo_fekv%C5%91-09.png" alt="Intren">
+        <h1>ChatGPT Ads Industry Dashboard</h1>
+    </header>
+    <div class="account-bar">Demo mode · no sign-in · nothing here is live data</div>
+
+    <div class="card">
+        <div class="filters">
+            <label>Period
+                <select id="period"></select>
+            </label>
+            <label>Metric
+                <select id="metric"></select>
+            </label>
+            <label>Industry
+                <select id="industry"></select>
+            </label>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 id="chart-title"></h2>
+        <div class="chart-wrap"><canvas id="boxplot"></canvas></div>
+        <p class="empty-state" id="chart-empty" hidden></p>
+    </div>
+
+    <div class="card table-scroll">
+        <h2>Industry totals</h2>
+        <table>
+            <thead><tr><th>Industry</th><th>Impressions</th><th>Clicks</th><th>Spend</th><th>CTR</th><th>CPC</th></tr></thead>
+            <tbody id="totals"></tbody>
+        </table>
+    </div>
+
+    <div class="card table-scroll" id="drilldown" hidden>
+        <div class="drill-head">
+            <h2 id="drill-title"></h2>
+            <div class="segmented" role="group" aria-label="Show accounts">
+                <button type="button" data-filter="all" aria-pressed="true">All</button>
+                <button type="button" data-filter="Real" aria-pressed="false">Real only</button>
+                <button type="button" data-filter="Synthetic" aria-pressed="false">Synthetic only</button>
+            </div>
+        </div>
+        <table>
+            <thead><tr><th>Account / campaign</th><th>Impressions</th><th>Clicks</th><th>Spend</th><th>CTR</th><th>CPC</th></tr></thead>
+            <tbody id="drill-rows"></tbody>
+        </table>
+    </div>
+    <div class="card" id="drill-empty"><p class="empty-state">Select an industry above to see its accounts and campaigns.</p></div>
+</main>
+
+<footer class="site-footer">
+    <p id="rates"></p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.4.4/build/index.umd.min.js"></script>
+<script src="data.js"></script>
+<script>
+(() => {
+    const LABELS = { impressions: 'Impressions', clicks: 'Clicks', spend: 'Spend', ctr: 'CTR', cpc: 'CPC' };
+    const AXIS = { impressions: 'Impressions', clicks: 'Clicks', spend: 'Spend (HUF)', ctr: 'CTR (%)', cpc: 'CPC (HUF)' };
+    const nf = new Intl.NumberFormat('en-US');
+    const dateFmt = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const $ = (id) => document.getElementById(id);
+
+    const data = window.DEMO_DATA;
+    if (!data || !Array.isArray(data.periods) || data.periods.length === 0) {
+        document.querySelector('main').innerHTML = '<div class="card"><p class="empty-state">The demo data (data.js) could not be loaded.</p></div>';
+        return;
+    }
+
+    // Same display rules as the dashboard view: Spend rounded to a whole unit,
+    // CPC derived from that rounded Spend, CTR to two decimals.
+    const displaySpend = (t) => Math.round(t.spend);
+    const displayCpc = (t) => (t.clicks > 0 ? Math.round(displaySpend(t) / t.clicks) : null);
+    const ctrText = (t) => (t.ctr === null ? '–' : (t.ctr * 100).toFixed(2) + '%');
+    const cells = (t, currency) => [
+        nf.format(t.impressions), nf.format(t.clicks),
+        nf.format(displaySpend(t)) + ' ' + currency, ctrText(t),
+        displayCpc(t) === null ? '–' : nf.format(displayCpc(t)) + ' ' + currency,
+    ];
+    const td = (text, cls) => { const c = document.createElement('td'); c.textContent = text; if (cls) c.className = cls; return c; };
+
+    // ---- State (kept in the URL hash so a view can be shared, e.g. #metric=cpc)
+    const params = new URLSearchParams(location.hash.slice(1));
+    const state = {
+        period: data.periods.some((p) => p.id === params.get('period')) ? params.get('period') : data.periods[0].id,
+        metric: data.metrics.includes(params.get('metric')) ? params.get('metric') : 'impressions',
+        industry: params.get('industry') || '',
+        filter: 'all',
+    };
+    const period = () => data.periods.find((p) => p.id === state.period) || data.periods[0];
+
+    // ---- Static text
+    const full = data.periods[0];
+    $('snapshot-note').textContent = `Demo period ${dateFmt(full.from)} – ${dateFmt(full.to)}, generated ${dateFmt(data.generatedAt)}.`;
+    $('rates').innerHTML = `Demo exchange rate: 1 EUR = <span class="rate-value">${data.exchangeRates.EUR.toFixed(2)}</span> HUF &middot; 1 USD = <span class="rate-value">${data.exchangeRates.USD.toFixed(2)}</span> HUF`;
+
+    // ---- Controls
+    for (const p of data.periods) $('period').add(new Option(p.label, p.id));
+    for (const m of data.metrics) $('metric').add(new Option(LABELS[m], m));
+    $('industry').add(new Option('All industries', ''));
+    for (const i of full.industries) $('industry').add(new Option(i, i));
+
+    let chart = null;
+    function render() {
+        const p = period();
+        if (state.industry && !p.industries.includes(state.industry)) state.industry = '';
+        $('period').value = p.id;
+        $('metric').value = state.metric;
+        $('industry').value = state.industry;
+        history.replaceState(null, '', '#' + new URLSearchParams({ period: p.id, metric: state.metric, ...(state.industry ? { industry: state.industry } : {}) }));
+
+        // Chart
+        const plot = p.boxPlot[state.metric];
+        $('chart-title').textContent = `${LABELS[state.metric]} per campaign, by industry`;
+        $('boxplot').setAttribute('aria-label', `Box plot of ${state.metric} per campaign by industry`);
+        const empty = Object.keys(plot).filter((k) => plot[k].length === 0 || Object.keys(plot[k]).length === 0);
+        $('chart-empty').hidden = empty.length === 0;
+        $('chart-empty').textContent = empty.length ? `No campaign data in this range for: ${empty.join(', ')}.` : '';
+        drawChart(plot);
+
+        // Industry totals
+        const tbody = $('totals');
+        tbody.replaceChildren();
+        for (const i of p.industries) {
+            const tr = document.createElement('tr');
+            if (i === state.industry) tr.className = 'active';
+            const first = document.createElement('td');
+            const a = document.createElement('a');
+            a.href = '#'; a.textContent = i;
+            a.addEventListener('click', (e) => { e.preventDefault(); state.industry = i; render(); $('drilldown').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            first.append(a); tr.append(first);
+            const t = p.industryTotals[i];
+            if (t) cells(t, 'HUF').forEach((v) => tr.append(td(v)));
+            else { const c = td('no data', 'muted'); c.colSpan = 5; tr.append(c); }
+            tbody.append(tr);
+        }
+
+        // Drill-down
+        const accounts = state.industry ? p.drilldown[state.industry] || [] : null;
+        $('drilldown').hidden = accounts === null;
+        $('drill-empty').hidden = accounts !== null;
+        if (accounts !== null) {
+            $('drill-title').textContent = `${state.industry}: accounts and campaigns`;
+            document.querySelectorAll('.segmented button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === state.filter)));
+            const rows = $('drill-rows');
+            rows.replaceChildren();
+            const shown = accounts.filter((a) => state.filter === 'all' || a.label === state.filter);
+            if (shown.length === 0) {
+                const tr = document.createElement('tr'); const c = td(`No ${state.filter} accounts in ${state.industry} for this period.`, 'muted'); c.colSpan = 6; tr.append(c); rows.append(tr);
+            }
+            for (const acc of shown) {
+                const tr = document.createElement('tr');
+                const first = document.createElement('td');
+                const name = document.createElement('strong'); name.textContent = acc.name;
+                const tag = document.createElement('span'); tag.className = 'tag ' + acc.label.toLowerCase(); tag.textContent = acc.label;
+                first.append(name, ' ', tag); tr.append(first);
+                if (acc.totals) cells(acc.totals, acc.totals.currency).forEach((v) => tr.append(td(v)));
+                else { const c = td('no data in this range', 'muted'); c.colSpan = 5; tr.append(c); }
+                rows.append(tr);
+                for (const c of acc.campaigns) {
+                    const r = document.createElement('tr');
+                    r.append(td('  ' + c.campaign, 'muted'));
+                    cells(c, c.currency).forEach((v) => r.append(td(v)));
+                    rows.append(r);
+                }
+            }
+        }
+    }
+
+    function drawChart(plot) {
+        const canvas = $('boxplot');
+        if (!(window.Chart && Chart.registry.getController('boxplot'))) {
+            canvas.replaceWith(document.createTextNode('The chart library could not be loaded.'));
+            return;
+        }
+        const metric = state.metric;
+        const isCurrency = metric === 'spend' || metric === 'cpc';
+        const fmt = (v) => metric === 'ctr' ? (v * 100).toFixed(2) + '%'
+            : isCurrency ? new Intl.NumberFormat('en-US', { maximumFractionDigits: metric === 'cpc' ? 2 : 0 }).format(v) + ' HUF'
+            : nf.format(Math.round(v));
+        const fmtCompact = (v) => {
+            if (metric === 'ctr') return (v * 100).toFixed(1) + '%';
+            const n = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(v);
+            return isCurrency ? n + ' HUF' : n;
+        };
+        const css = getComputedStyle(document.documentElement);
+        const v = (name) => css.getPropertyValue(name).trim();
+        const names = Object.keys(plot);
+        const on = (n) => !state.industry || n === state.industry;
+        if (chart) chart.destroy();
+        chart = new Chart(canvas, {
+            type: 'boxplot',
+            data: {
+                labels: names,
+                datasets: [{
+                    label: metric,
+                    data: Object.values(plot),
+                    backgroundColor: names.map((n) => on(n) ? v('--chart-fill') : v('--chart-muted-fill')),
+                    borderColor: names.map((n) => on(n) ? v('--chart-accent') : v('--chart-muted-accent')),
+                    borderWidth: 2,
+                    medianColor: names.map((n) => on(n) ? v('--chart-median') : v('--chart-muted-median')),
+                    itemRadius: 0,
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                animation: { duration: 250 },
+                onClick: (_, els) => { if (els.length) { state.industry = names[els[0].index]; render(); } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label(context) {
+                                const el = context.element;
+                                const y = context.chart.scales.y;
+                                const val = (px) => y.getValueForPixel(px);
+                                return [`Max: ${fmt(val(el.max))}`, `Q3: ${fmt(val(el.q3))}`, `Median: ${fmt(val(el.median))}`, `Q1: ${fmt(val(el.q1))}`, `Min: ${fmt(val(el.min))}`];
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: AXIS[metric], color: v('--chart-tick') }, ticks: { color: v('--chart-tick'), callback: fmtCompact }, grid: { color: v('--chart-grid') } },
+                    x: { ticks: { color: v('--chart-tick') }, grid: { color: v('--chart-grid') } },
+                },
+            },
+        });
+    }
+
+    $('period').addEventListener('change', (e) => { state.period = e.target.value; render(); });
+    $('metric').addEventListener('change', (e) => { state.metric = e.target.value; render(); });
+    $('industry').addEventListener('change', (e) => { state.industry = e.target.value; state.filter = 'all'; render(); });
+    document.querySelectorAll('.segmented button').forEach((b) => b.addEventListener('click', () => { state.filter = b.dataset.filter; render(); }));
+    render();
+})();
+</script>
+</body>
+</html>
