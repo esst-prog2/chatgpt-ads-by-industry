@@ -1,0 +1,46 @@
+{
+  "voice": "Zoe (Premium)",
+  "note": "Single source for the narration AND the on-screen captions (index.html); keep them identical.",
+  "lines": [
+    {
+      "id": "c1a",
+      "text": "Planning a client's first ChatGPT Ads budget?",
+      "at": 0.25
+    },
+    {
+      "id": "c1b",
+      "text": "Right now, it's a guess from other platforms' benchmarks.",
+      "at": 3.35
+    },
+    {
+      "id": "c2a",
+      "text": "Instead, compare real campaigns by industry.",
+      "at": 7.15
+    },
+    {
+      "id": "c2b",
+      "text": "Switch the metric to CPC,",
+      "at": 10.15
+    },
+    {
+      "id": "c2c",
+      "text": "then open your client's industry to see its accounts and campaigns.",
+      "at": 13.4
+    },
+    {
+      "id": "c2d",
+      "text": "Synthetic accounts are stand-in data. Real ones are ours.",
+      "at": 17.3
+    },
+    {
+      "id": "c3",
+      "text": "This part's a projection: as more accounts join, each industry fills up with real data.",
+      "at": 21.4
+    },
+    {
+      "id": "c4",
+      "text": "Check real CPCs before you budget.",
+      "at": 27.5
+    }
+  ]
+}
