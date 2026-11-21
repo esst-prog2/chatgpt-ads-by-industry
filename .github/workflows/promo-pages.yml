@@ -1,5 +1,6 @@
 # Publishes the promo page (public/promo.html) to GitHub Pages at
-# https://<owner>.github.io/<repo>/ - and nothing else from the repository.
+# https://<owner>.github.io/<repo>/ with its logos and promo video - nothing
+# else from the repository.
 #
 # One-time setup in the repository's GitHub settings:
 #   1. Settings > Pages > Build and deployment > Source: "GitHub Actions".
@@ -16,6 +17,8 @@ on:
       - public/promo.html
       - public/images/brand-logo.png
       - public/images/logo_fekv*-09.png
+      - public/promo-video.mp4
+      - public/promo-video-poster.jpg
       - .github/workflows/promo-pages.yml
   workflow_dispatch:
 
@@ -47,6 +50,7 @@ jobs:
           fi
           mkdir -p _site/images
           cp public/images/brand-logo.png public/images/logo_fekv*-09.png _site/images/
+          cp public/promo-video.mp4 public/promo-video-poster.jpg _site/
           touch _site/.nojekyll
           python3 - <<'PY'
           import os

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!--
+    Video thumbnail / poster (option A: the CPC chart as hero), 1920x1080.
+    The chart is cropped from ../assets/dash-cpc.png - the real dashboard
+    rendered with illustrative demo data (capture/render-dashboard.php),
+    labelled as such. Rendered to public/promo-video-poster.jpg with headless
+    Chrome, served over http from promo-video/ so the relative paths resolve:
+      python3 -m http.server 8835 --directory promo-video
+      chrome --headless --virtual-time-budget=3000 --window-size=1920,1080 \
+             --screenshot=thumb.png http://127.0.0.1:8835/thumbnail/thumbnail.html
+      ffmpeg -i thumb.png -q:v 3 public/promo-video-poster.jpg
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --blue:#0600FF; --navy:#19095B; --white:#FFFFFF; --line:#E2E8F0; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { width:1920px; height:1080px; overflow:hidden; }
+    body {
+      position:relative; font-family:'Montserrat', sans-serif; color:var(--white);
+      background:
+        radial-gradient(1200px 800px at 78% 40%, rgba(255,255,255,0.14), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, #0600FF 0%, #2410C8 55%, #19095B 100%);
+    }
+    .copy { position:absolute; left:120px; top:215px; width:740px; }
+    .logo { height:64px; width:auto; display:block; margin-bottom:84px; }
+    h1 { font-size:104px; line-height:1.02; font-weight:800; letter-spacing:-0.02em; }
+    .sub { margin-top:36px; font-size:40px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.88); }
+    .stage { position:absolute; left:880px; top:250px; width:1000px; height:700px; perspective:1800px; }
+    .card {
+      position:absolute; left:0; top:40px; width:980px; height:401px; border-radius:22px; overflow:hidden;
+      background:var(--white); border:1px solid var(--line);
+      transform:rotateY(-14deg) rotateX(6deg) rotateZ(1.5deg); transform-origin:30% 50%;
+      box-shadow:0 50px 90px rgba(10, 2, 60, 0.45), 0 12px 24px rgba(10, 2, 60, 0.25);
+    }
+    /* Crop of the CPC chart card: source px x 202-2200, y 512-1330 of a 2400x3000 screenshot. */
+    .card img { position:absolute; width:1177px; height:1471px; left:-99px; top:-251px; }
+    .note {
+      position:absolute; right:40px; top:505px; font-size:26px; font-weight:600; color:rgba(255,255,255,0.8);
+    }
+    /* Centred on the whole thumbnail, semi-transparent so it doesn't dominate. */
+    .play {
+      position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+      width:150px; height:150px; border-radius:50%; opacity:0.75;
+      background:var(--white); box-shadow:0 14px 32px rgba(10, 2, 60, 0.25);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .play svg { width:62px; height:62px; margin-left:10px; }
+  </style>
+</head>
+<body>
+  <div class="copy">
+    <img class="logo" src="../assets/logo-white.png" alt="Intren">
+    <h1>What does ChatGPT Ads cost?</h1>
+    <p class="sub">Real campaigns, compared by industry.</p>
+  </div>
+  <div class="stage">
+    <div class="card">
+      <img src="../assets/dash-cpc.png" alt="">
+    </div>
+    <div class="note">Real app screen · illustrative demo data</div>
+  </div>
+  <div class="play" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M5 3.5v17l15-8.5z" fill="#0600FF"/></svg>
+  </div>
+</body>
+</html>

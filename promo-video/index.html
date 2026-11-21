@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      30-second promo for the ChatGPT Ads Industry Dashboard
+      (rendered to public/promo-video.mp4). The captions are exactly the
+      narrated words (audio/narration.json), so it works fully muted. The
+      soundtrack (assets/audio/soundtrack.m4a, built by audio/make-soundtrack.py)
+      is the local macOS Zoe voice plus synthesised music and sound effects -
+      no third-party music or samples. Scene 2 uses real dashboard
+      screenshots rendered with illustrative demo data only
+      (capture/render-dashboard.php); scene 3 is an illustrative projection
+      and is labelled as such on screen. No real figures, no client names.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --bg: #f8fafc; --fg: #19095b; --muted: #6e6b85; --card: #ffffff; --line: #e2e8f0;
+        --accent: #0600ff; --real: #037a55; --real-fill: #e6f6ef; --purple: #5b148b; --purple-fill: #f3eaf8;
+        --warn: #ff9100; --note: #ffe27a;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+      #root { position: relative; width: 1920px; height: 1080px; font-family: "Montserrat", sans-serif; color: var(--fg); }
+      .clip { position: absolute; inset: 0; }
+
+      /* Captions: always-on, large, high contrast, for silent viewing. */
+      .caption {
+        position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%);
+        max-width: 1640px; padding: 22px 40px; border-radius: 16px;
+        background: var(--fg); color: #fff; font-size: 46px; font-weight: 700; line-height: 1.25;
+        text-align: center; opacity: 0;
+      }
+
+      /* Scene 1: the guess */
+      .monitor { position: absolute; left: 260px; top: 70px; width: 1400px; height: 780px; border-radius: 28px; background: #1d1154; padding: 22px; }
+      .screen { position: relative; width: 100%; height: 100%; border-radius: 12px; background: #fff; overflow: hidden; }
+      .tabs { display: flex; gap: 8px; padding: 14px 16px 0; background: #e9ecf3; height: 64px; }
+      .tab { padding: 12px 24px; border-radius: 10px 10px 0 0; background: #d6dbe6; color: var(--muted); font-size: 28px; font-weight: 600; white-space: nowrap; }
+      .tab.on { background: #fff; color: var(--fg); }
+      .page { position: relative; padding: 48px 64px; }
+      .page h3 { font-size: 34px; font-weight: 700; margin-bottom: 30px; }
+      .bar { height: 22px; border-radius: 11px; background: #edf0f5; margin-bottom: 22px; }
+      .plan { position: absolute; right: 70px; top: 150px; width: 520px; padding: 34px 40px; border: 2px solid var(--line); border-radius: 16px; background: #fbfcfe; }
+      .plan div { font-size: 30px; font-weight: 600; padding: 12px 0; border-bottom: 2px dashed var(--line); }
+      .plan span { color: var(--muted); font-weight: 400; }
+      .note {
+        position: absolute; left: 160px; top: 420px; width: 560px; padding: 44px 46px; background: var(--note);
+        box-shadow: 0 18px 40px rgba(25, 9, 91, 0.25); transform-origin: 50% 0;
+        font-size: 58px; font-weight: 800; line-height: 1.1; color: #2a1b00;
+      }
+      .note small { display: block; font-size: 30px; font-weight: 600; margin-top: 16px; color: #6b4e00; }
+
+      /* Scene 2: the real app */
+      .chip {
+        position: absolute; top: 46px; right: 210px; padding: 10px 22px; border-radius: 99px;
+        border: 2px solid var(--muted); color: var(--muted); font-size: 28px; font-weight: 700; background: #fff;
+      }
+      .browser { position: absolute; left: 210px; top: 108px; width: 1500px; height: 742px; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 24px 60px rgba(25, 9, 91, 0.18); border: 1px solid var(--line); }
+      .chrome { height: 42px; background: #eef1f6; display: flex; align-items: center; gap: 10px; padding: 0 18px; }
+      .dot { width: 14px; height: 14px; border-radius: 50%; background: #cfd5e1; }
+      .viewport { position: absolute; top: 42px; left: 0; width: 1500px; height: 700px; overflow: hidden; background: var(--bg); }
+      .shot { position: absolute; left: 0; top: 0; width: 1200px; height: 1500px; transform-origin: 0 0; }
+      .shot img { position: absolute; left: 0; top: 0; width: 1200px; height: 1500px; }
+      .ring { position: absolute; border: 4px solid var(--warn); border-radius: 10px; opacity: 0; }
+      .ring.real { border-color: var(--real); }
+      .ring.syn { border-color: var(--purple); }
+      .cursor { position: absolute; width: 40px; height: 40px; opacity: 0; }
+
+      /* Scene 3: illustrative projection */
+      .badge {
+        position: absolute; left: 50%; top: 40px; transform: translateX(-50%); padding: 14px 32px; border-radius: 99px;
+        background: var(--warn); color: #241400; font-size: 30px; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
+      }
+      .date { position: absolute; left: 0; right: 0; top: 130px; text-align: center; font-size: 64px; font-weight: 800; }
+      .date small { display: block; font-size: 28px; font-weight: 600; color: var(--muted); margin-top: 6px; }
+      .grid { position: absolute; left: 330px; top: 330px; width: 1260px; }
+      .row { display: grid; grid-template-columns: 420px repeat(3, 200px) 1fr; align-items: center; gap: 18px; height: 88px; border-bottom: 2px solid var(--line); }
+      .row .name { font-size: 32px; font-weight: 700; }
+      .slot { position: relative; height: 50px; }
+      .pill { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 99px; font-size: 28px; font-weight: 700; border: 3px solid; }
+      .pill.s { color: var(--purple); border-color: var(--purple); background: var(--purple-fill); }
+      .pill.r { color: var(--real); border-color: var(--real); background: var(--real-fill); opacity: 0; }
+      .full { font-size: 30px; font-weight: 800; color: var(--real); opacity: 0; white-space: nowrap; }
+
+      /* End card */
+      .end { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+      .end img { height: 96px; margin-bottom: 48px; }
+      .end h1 { font-size: 76px; font-weight: 800; margin-bottom: 24px; }
+      .end p { font-size: 40px; font-weight: 600; color: var(--fg); }
+      .end .sub { font-size: 30px; font-weight: 600; color: var(--muted); margin-top: 22px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1920" data-height="1080">
+
+      <!-- Soundtrack: Zoe narration (audio/narration.json - the captions below are the same
+           words), lo-fi pulse and soft whooshes/clicks, mixed by audio/make-soundtrack.py. -->
+      <audio id="soundtrack" src="assets/audio/soundtrack.m4a" data-start="0" data-duration="30" data-volume="1" data-fade-in="0.2" data-fade-out="0.4"></audio>
+
+      <!-- ===== Scene 1: the guess (0-7s) ===== -->
+      <section id="s1" class="clip" data-start="0" data-duration="7.3" data-track-index="0">
+        <div class="monitor">
+          <div class="screen">
+            <div class="tabs">
+              <div class="tab" id="tab-go">Google Ads CPC</div>
+              <div class="tab" id="tab-me">Meta Ads CPC</div>
+              <div class="tab" id="tab-li">LinkedIn Ads CPC</div>
+              <div class="tab" id="tab-gpt">ChatGPT Ads · ?</div>
+            </div>
+            <div class="page">
+              <h3 id="page-title">Other platforms' benchmarks</h3>
+              <h3 id="page-title-2" style="position: absolute; top: 48px; left: 64px; opacity: 0">No ChatGPT Ads benchmark yet</h3>
+              <div class="bar" style="width: 640px"></div>
+              <div class="bar" style="width: 520px"></div>
+              <div class="bar" style="width: 600px"></div>
+              <div class="bar" style="width: 380px"></div>
+            </div>
+            <div class="plan">
+              <div>Client plan</div>
+              <div><span>Industry:</span> Education</div>
+              <div><span>Test budget:</span> ?</div>
+              <div><span>Expected CPC:</span> ?</div>
+            </div>
+          </div>
+        </div>
+        <div class="note" id="note">ChatGPT Ads CPC = ???<small>borrowed from other platforms</small></div>
+        <div class="caption" id="c1a">Planning a client's first ChatGPT Ads budget?</div>
+        <div class="caption" id="c1b">Right now, it's a guess from other platforms' benchmarks.</div>
+      </section>
+
+      <!-- ===== Scene 2: the real app (7-21s) ===== -->
+      <section id="s2" class="clip" data-start="7" data-duration="14.3" data-track-index="1">
+        <div class="chip">Real app screens · illustrative demo data</div>
+        <div class="browser">
+          <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <div class="viewport">
+            <div class="shot" id="shot">
+              <img id="img-overview" src="assets/dash-overview.png" alt="" />
+              <img id="img-cpc" src="assets/dash-cpc.png" alt="" style="opacity: 0" />
+              <img id="img-drill" src="assets/dash-drilldown.png" alt="" style="opacity: 0" />
+              <div class="ring" id="ring-metric" style="left: 417px; top: 180px; width: 124px; height: 46px"></div>
+              <div class="ring" id="ring-industry" style="left: 545px; top: 180px; width: 180px; height: 46px"></div>
+              <div class="ring syn" id="ring-syn1" style="left: 252px; top: 1065px; width: 88px; height: 29px"></div>
+              <div class="ring syn" id="ring-syn2" style="left: 254px; top: 1167px; width: 88px; height: 29px"></div>
+              <div class="ring real" id="ring-real" style="left: 248px; top: 1269px; width: 55px; height: 29px"></div>
+            </div>
+            <svg class="cursor" id="cursor" viewBox="0 0 24 24"><path d="M3 2l7 19 2.5-7.5L20 11z" fill="#19095b" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" /></svg>
+          </div>
+        </div>
+        <div class="caption" id="c2a">Instead, compare real campaigns by industry.</div>
+        <div class="caption" id="c2b">Switch the metric to CPC,</div>
+        <div class="caption" id="c2c">then open your client's industry to see its accounts and campaigns.</div>
+        <div class="caption" id="c2d">Synthetic accounts are stand-in data. Real ones are ours.</div>
+      </section>
+
+      <!-- ===== Scene 3: illustrative projection (21-27.5s) ===== -->
+      <section id="s3" class="clip" data-start="21" data-duration="6.7" data-track-index="2">
+        <div class="badge">ILLUSTRATIVE PROJECTION · not current data</div>
+        <div class="date" id="d0">31 Aug 2026<small>Self-service opens in Hungary</small></div>
+        <div class="date" id="d1" style="opacity: 0">Late 2026<small>More accounts join</small></div>
+        <div class="date" id="d2" style="opacity: 0">2027<small>Industries reach three real accounts</small></div>
+        <div class="grid" id="grid"></div>
+        <div class="caption" id="c3">This part's a projection: as more accounts join, each industry fills up with real data.</div>
+      </section>
+
+      <!-- ===== End card (27.5-30s) ===== -->
+      <section id="s4" class="clip end" data-start="27.4" data-duration="2.6" data-track-index="3">
+        <img src="assets/logo.png" alt="Intren" />
+        <h1>ChatGPT Ads Industry Dashboard</h1>
+        <p id="c4">Check real CPCs before you budget.</p>
+        <p class="sub">Internal tool · sign in with your company Google account</p>
+      </section>
+    </div>
+
+    <script>
+      // Scene 3 grid, built deterministically: [industry, step at which each slot turns Real (0 = already Real at launch)].
+      const rows = [
+        ["Retail & eCommerce", [1, 1, 2]],
+        ["Professional Services", [0, 1, 2]],
+        ["Education & Careers", [0, 2, 2]],
+        ["Health", [1, 2, 2]],
+        ["Travel & Hospitality", [2, 2, 2]],
+      ];
+      const grid = document.getElementById("grid");
+      rows.forEach(([name, steps], i) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `<div class="name">${name}</div>` +
+          steps.map((s, j) => `<div class="slot"><div class="pill s" id="s-${i}-${j}">Synthetic</div><div class="pill r" id="r-${i}-${j}" data-step="${s}">Real</div></div>`).join("") +
+          `<div class="full" id="full-${i}">Fully real</div>`;
+        grid.appendChild(row);
+      });
+
+      const tl = gsap.timeline({ paused: true });
+      const showCap = (id, at, until) => {
+        tl.fromTo(id, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, at);
+        tl.to(id, { opacity: 0, duration: 0.25 }, until - 0.25);
+      };
+
+      // ---- Scene 1
+      tl.set("#tab-go", { className: "tab on" }, 0);
+      tl.fromTo("#note", { opacity: 0, rotation: -14, scale: 1.25 }, { opacity: 1, rotation: -4, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, 0.4);
+      showCap("#c1a", 0.15, 3.3);
+      tl.set("#tab-go", { className: "tab" }, 1.6);
+      tl.set("#tab-me", { className: "tab on" }, 1.6);
+      tl.set("#tab-me", { className: "tab" }, 3.2);
+      tl.set("#tab-li", { className: "tab on" }, 3.2);
+      tl.to("#note", { rotation: -1, duration: 0.12, yoyo: true, repeat: 3 }, 3.6);
+      showCap("#c1b", 3.3, 7.0);
+      tl.set("#tab-li", { className: "tab" }, 4.8);
+      tl.set("#tab-gpt", { className: "tab on" }, 4.8);
+      tl.set("#page-title", { opacity: 0 }, 4.8);
+      tl.set("#page-title-2", { opacity: 1 }, 4.8);
+      tl.to("#s1", { opacity: 0, duration: 0.3 }, 7.0);
+
+      // ---- Scene 2 (shot transforms: screen = x + css * scale)
+      tl.fromTo("#s2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 7.0);
+      tl.set("#shot", { x: 30, y: -96, scale: 1.2 }, 7.0);
+      showCap("#c2a", 7.05, 10.05);
+      tl.fromTo("#cursor", { opacity: 0, x: 1100, y: 520 }, { opacity: 1, x: 1100, y: 520, duration: 0.2 }, 8.4);
+      tl.to("#cursor", { x: 600, y: 145, duration: 1.0, ease: "power2.inOut" }, 9.0);
+      tl.to("#cursor", { scale: 0.85, duration: 0.1, yoyo: true, repeat: 1 }, 10.1);
+      tl.to("#img-cpc", { opacity: 1, duration: 0.35 }, 10.4);
+      tl.to("#ring-metric", { opacity: 1, duration: 0.25 }, 10.6);
+      showCap("#c2b", 10.05, 13.3);
+      tl.to("#ring-metric", { opacity: 0, duration: 0.25 }, 12.6);
+      tl.to("#cursor", { x: 790, y: 145, duration: 0.6, ease: "power2.inOut" }, 12.7);
+      tl.to("#cursor", { scale: 0.85, duration: 0.1, yoyo: true, repeat: 1 }, 13.35);
+      tl.to("#img-drill", { opacity: 1, duration: 0.35 }, 13.5);
+      tl.to("#ring-industry", { opacity: 1, duration: 0.25 }, 13.6);
+      showCap("#c2c", 13.3, 17.2);
+      tl.to("#ring-industry", { opacity: 0, duration: 0.2 }, 14.6);
+      tl.to("#cursor", { opacity: 0, duration: 0.2 }, 14.6);
+      tl.to("#shot", { y: -1152, duration: 1.4, ease: "power2.inOut" }, 14.8);
+      tl.to("#shot", { x: -138, y: -1501, scale: 1.45, duration: 1.2, ease: "power2.inOut" }, 16.9);
+      showCap("#c2d", 17.2, 21.0);
+      tl.to(["#ring-syn1", "#ring-syn2"], { opacity: 1, duration: 0.3 }, 17.45);
+      tl.to("#ring-real", { opacity: 1, duration: 0.3 }, 19.2);
+      tl.to("#ring-real", { scale: 1.12, duration: 0.25, yoyo: true, repeat: 1, transformOrigin: "50% 50%" }, 19.5);
+      tl.to("#s2", { opacity: 0, duration: 0.3 }, 21.0);
+
+      // ---- Scene 3 (illustrative projection)
+      tl.fromTo("#s3", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 21.0);
+      tl.fromTo("#grid .row", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.06 }, 21.2);
+      // Slots already Real at launch.
+      rows.forEach(([, steps], i) => steps.forEach((st, j) => {
+        if (st === 0) { tl.set(`#s-${i}-${j}`, { opacity: 0 }, 21.0); tl.set(`#r-${i}-${j}`, { opacity: 1 }, 21.0); }
+      }));
+      showCap("#c3", 21.3, 27.4);
+      const stepAt = { 1: 23.8, 2: 25.8 };
+      tl.to("#d0", { opacity: 0, duration: 0.2 }, 23.5);
+      tl.fromTo("#d1", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 23.6);
+      tl.to("#d1", { opacity: 0, duration: 0.2 }, 25.5);
+      tl.fromTo("#d2", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 25.6);
+      [1, 2].forEach((step) => {
+        let k = 0;
+        rows.forEach(([, steps], i) => steps.forEach((st, j) => {
+          if (st !== step) return;
+          const at = stepAt[step] + 0.07 * k++;
+          tl.to(`#s-${i}-${j}`, { opacity: 0, duration: 0.12 }, at);
+          tl.fromTo(`#r-${i}-${j}`, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.2, ease: "back.out(2)" }, at + 0.12);
+        }));
+      });
+      rows.forEach((_, i) => tl.to(`#full-${i}`, { opacity: 1, duration: 0.3 }, 26.7 + i * 0.06));
+      tl.to("#s3", { opacity: 0, duration: 0.3 }, 27.4);
+
+      // ---- End card
+      tl.fromTo("#s4", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 27.4);
+      tl.fromTo("#s4 h1", { y: 20 }, { y: 0, duration: 0.5, ease: "power2.out" }, 27.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

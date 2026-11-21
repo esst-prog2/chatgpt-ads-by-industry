@@ -56,6 +56,8 @@
            white; the brand #02B77F is 2.6:1). Dark mode keeps the brand green. */
         .tag.synthetic { color:var(--purple); border-color:var(--purple); }
         .cta-note { margin:10px 0 0; font-size:14px; color:var(--muted); }
+        /* 30-second narrated promo video (promo-video/), a full-width row under both columns. */
+        .promo-video { grid-column:1 / -1; display:block; width:100%; height:auto; aspect-ratio:16 / 9; margin-top:40px; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
         @media (max-width:900px) {
             /* One column: cap the card so stacked lines stay ~65-75 characters. */
             main { grid-template-columns:1fr; max-width:620px; padding:24px; }
@@ -82,6 +84,11 @@
         <li><strong>See which numbers are real</strong>Open an industry to see its accounts and campaigns. <span class="tag">Real</span> accounts are ours; <span class="tag synthetic">Synthetic</span> ones are stand-in data, and the chart and totals include both. Before you quote a number, check whether its industry has any Synthetic accounts.</li>
         <li><strong>Industry totals in HUF</strong>Converted at the exchange rate shown in the dashboard footer. Account and campaign rows stay in their own currency.</li>
     </ul> 
+
+    <video class="promo-video" src="promo-video.mp4" poster="promo-video-poster.jpg" controls muted playsinline preload="metadata"
+           aria-label="30-second narrated video with matching on-screen captions: from guessing a ChatGPT Ads CPC to checking real campaigns by industry in the dashboard">
+        <a href="promo-video.mp4">Watch the 30-second video</a>
+    </video>
 </main>
 </body>
 </html>
