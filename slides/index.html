@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChatGPT Ads Industry Dashboard · 5-minute talk</title>
+<meta name="description" content="Five slides on the ChatGPT Ads Industry Dashboard: who it is for, an interactive demo, how it was verified, what I learned and what comes next.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reset.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.css">
+<!--
+    5-minute deck (5 slides + closing) on reveal.js 5.1.0 (cdnjs, pinned), no
+    reveal theme: brand tokens copied from public/promo.html. Published at
+    <pages-url>/slides/ by .github/workflows/promo-pages.yml (copies slides/
+    without slides/capture/).
+
+    Slide 2 is a presentation-safe walkthrough: screenshots of the real
+    dashboard and admin panel rendered by the app's own code with INVENTED data
+    (slides/capture/render-views.php: @example.com users, fake keys, the
+    dashboard's stand-ins for real accounts labelled real-account-<n>), played
+    back with a moving camera and cursor. Each step is a reveal.js fragment, so
+    Right / Space walk through it; the on-slide buttons step, play and zoom.
+    If slides/assets/demo-walkthrough.mp4 exists, a "Recording" button appears
+    and plays it in the same frame.
+
+    No client names and no real-account figures: anyone with the link can read it.
+    Navigation: Right / Space = next, Left / Shift+Space = back, Home / End,
+    Esc = overview, F = fullscreen. Every slide has its own URL (#/the-demo ...).
+-->
+<style>
+  :root { --bg:#F8FAFC; --fg:#19095B; --muted:#6E6B85; --card:#FFFFFF; --line:#E2E8F0; --accent:#0600FF; --accent-soft:#EEEEFF; --real-text:#037A55; --purple:#5B148B; --danger:#D92D20; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#140B3C; --fg:#F2F1FA; --muted:#B5B2CC; --card:#1D1154; --line:#352A73; --accent:#7C83FF; --accent-soft:#2A1F6B; --real-text:#34d3a8; --purple:#C090E0; --danger:#FF7A6E; } }
+
+  html, body, .reveal-viewport { background:var(--card); }
+  .reveal { font-family:'Montserrat', ui-sans-serif, system-ui, sans-serif; font-weight:300; color:var(--fg); }
+  .reveal .slides { text-align:left; }
+  .reveal ::selection { background:var(--accent); color:#fff; }
+  .reveal a { color:var(--accent); }
+  .reveal a:focus-visible, .reveal button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+  .reveal .controls { color:var(--accent); }
+  .reveal .progress { color:var(--accent); height:6px; }
+  .reveal strong { font-weight:700; }
+
+  .reveal .slides > section { height:100%; }
+  .pad { position:relative; height:900px; padding:72px 96px 96px; display:flex; flex-direction:column; box-sizing:border-box; }
+
+  .kicker { font-size:20px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin:0 0 18px; }
+  .reveal h1, .reveal h2 { font-weight:700; line-height:1.12; margin:0; text-wrap:balance; color:var(--fg); }
+  .reveal h1 { font-size:64px; }
+  .reveal h2 { font-size:54px; }
+  .lead { font-size:28px; line-height:1.45; color:var(--muted); margin:22px 0 0; max-width:1180px; }
+  .reveal code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.86em; background:var(--accent-soft); padding:2px 8px; border-radius:6px; white-space:nowrap; }
+  .tag { display:inline-block; font-size:18px; font-weight:700; padding:1px 12px; border-radius:99px; border:2px solid; vertical-align:middle; line-height:1.4; }
+  .tag.real { color:var(--real-text); }
+  .tag.syn { color:var(--purple); }
+
+  .foot { position:absolute; left:96px; right:96px; bottom:36px; display:flex; align-items:center; justify-content:space-between; font-size:18px; color:var(--muted); }
+  .foot img { height:28px; width:auto; display:block; }
+  .logo-dark { display:none !important; }
+  @media (prefers-color-scheme: dark) { .logo-light { display:none !important; } .logo-dark { display:block !important; } }
+
+  /* 1 · For whom, and why */
+  .why-grid { display:grid; grid-template-columns:1.05fr 1fr; gap:64px; margin-top:56px; align-items:start; }
+  .shift { display:grid; gap:20px; }
+  .shift .row { border:1px solid var(--line); border-radius:12px; padding:26px 30px; }
+  .shift .label { font-size:18px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .shift .row p { margin:0; font-size:28px; line-height:1.35; }
+  .shift .after { border-color:var(--accent); background:var(--accent-soft); }
+  .shift .after .label { color:var(--accent); }
+  .facts { list-style:none; margin:0; padding:0; }
+  .facts li { font-size:28px; line-height:1.4; padding:22px 0; border-bottom:1px solid var(--line); }
+  .facts li:first-child { padding-top:0; }
+  .facts li:last-child { border-bottom:0; }
+  .facts b { display:block; font-size:18px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+
+  /* 2 · The demo: camera + cursor player */
+  #the-demo .pad { padding-top:56px; }
+  #the-demo h2 { font-size:44px; }
+  .demo { display:grid; grid-template-columns:1056px 1fr; gap:32px; margin-top:28px; }
+  .frame { position:relative; width:1056px; height:594px; overflow:hidden; border:1px solid var(--line); border-radius:12px; background:#F8FAFC; }
+  .cam { position:absolute; left:0; top:0; width:1440px; height:1700px; transform-origin:0 0; transition:transform .9s cubic-bezier(.65,0,.35,1); will-change:transform; }
+  .cam img.scene { position:absolute; left:0; top:0; width:1440px; height:auto; margin:0; opacity:0; transition:opacity .45s ease; }
+  .cam img.scene.on { opacity:1; }
+  .ring { position:absolute; border:4px solid var(--accent); border-radius:10px; box-shadow:0 0 0 6px rgba(6,0,255,.12); opacity:0; transition:opacity .3s ease, left .6s ease, top .6s ease, width .6s ease, height .6s ease; pointer-events:none; }
+  .ring.on { opacity:1; }
+  .cursor { position:absolute; left:720px; top:300px; width:0; height:0; opacity:0; transition:left .75s cubic-bezier(.65,0,.35,1), top .75s cubic-bezier(.65,0,.35,1), opacity .3s ease; pointer-events:none; z-index:5; }
+  .cursor.on { opacity:1; }
+  .cursor .arrow { position:absolute; left:0; top:0; transform-origin:0 0; transition:transform .9s cubic-bezier(.65,0,.35,1); }
+  .cursor svg { display:block; }
+  .cursor .ripple { position:absolute; left:-22px; top:-22px; width:44px; height:44px; border-radius:50%; border:3px solid var(--accent); opacity:0; transform-origin:center; }
+  .cursor.click .ripple { animation:ripple .55s ease-out; }
+  @keyframes ripple { from { opacity:.9; transform:scale(.3); } to { opacity:0; transform:scale(1.4); } }
+  .dialog { position:absolute; left:500px; top:380px; width:440px; padding:22px 24px; background:#fff; color:#19095B; border-radius:12px; box-shadow:0 18px 50px rgba(25,9,91,.28); font-size:19px; opacity:0; transform:scale(.96); transition:opacity .25s ease, transform .25s ease; pointer-events:none; z-index:4; }
+  .dialog.on { opacity:1; transform:none; }
+  .dialog p { margin:0 0 18px; font-weight:500; }
+  .dialog .btns { display:flex; justify-content:flex-end; gap:10px; }
+  .dialog span { padding:6px 18px; border-radius:6px; border:1px solid #E2E8F0; font-weight:700; font-size:17px; }
+  .dialog .ok { background:#0600FF; border-color:#0600FF; color:#fff; }
+  .frame video { position:absolute; inset:0; width:100%; height:100%; background:#000; display:none; }
+  .frame.video video { display:block; }
+  .frame.video .cam { visibility:hidden; }
+
+  .bar { display:flex; align-items:center; gap:8px; margin-top:14px; }
+  .bar button { height:40px; min-width:40px; padding:0 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); font:700 16px/1 'Montserrat', sans-serif; cursor:pointer; }
+  .bar button:hover { border-color:var(--accent); color:var(--accent); }
+  .bar button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .bar .sep { width:1px; height:26px; background:var(--line); margin:0 6px; }
+  .bar .zoomval { min-width:56px; text-align:center; font-size:16px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .bar [hidden] { display:none; }
+
+  .panel { display:flex; flex-direction:column; }
+  .chapters { list-style:none; margin:0 0 20px; padding:0; display:grid; gap:8px; }
+  .chapters li { font-size:17px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:8px 12px; border-radius:8px; border:1px solid var(--line); }
+  .chapters li.on { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+  .stepno { font-size:18px; font-weight:700; color:var(--accent); margin:6px 0 8px; font-variant-numeric:tabular-nums; }
+  .caption { font-size:26px; line-height:1.38; min-height:180px; }
+  .hint { margin:auto 0 0; font-size:16px; line-height:1.45; color:var(--muted); }
+  .demo-note { margin:14px 0 0; font-size:17px; color:var(--muted); }
+  .demo-step { display:none; }
+
+  /* 3 · Why it works */
+  .checks { display:grid; grid-template-columns:1.15fr 1fr; gap:40px; margin-top:44px; }
+  .card { border:1px solid var(--line); border-radius:12px; padding:30px 34px; }
+  .card h3 { margin:0 0 14px; font-size:28px; font-weight:700; line-height:1.25; }
+  .card p { margin:0; font-size:23px; line-height:1.45; color:var(--muted); }
+  .card p + p { margin-top:12px; }
+  .mini { width:100%; border-collapse:collapse; font-size:22px; margin:6px 0 18px; font-variant-numeric:tabular-nums; }
+  .mini th, .mini td { text-align:right; padding:9px 0; border-bottom:1px solid var(--line); }
+  .mini th:first-child, .mini td:first-child { text-align:left; }
+  .mini th { font-weight:700; font-size:18px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .verdict { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .verdict div { border-radius:10px; padding:14px 18px; font-size:20px; }
+  .verdict .no { border:1px dashed var(--line); color:var(--muted); }
+  .verdict .yes { background:var(--accent-soft); color:var(--fg); }
+  .verdict strong { display:block; font-size:34px; color:inherit; }
+  .verdict .no strong { text-decoration:line-through; text-decoration-thickness:2px; }
+  .stack { display:grid; gap:24px; }
+  .rg { display:inline-flex; gap:10px; margin-top:16px; font-size:18px; font-weight:700; }
+  .rg span { padding:4px 14px; border-radius:99px; }
+  .rg .red { background:#FDE8E8; color:#B42318; }
+  .rg .green { background:#DDF7EE; color:#03694A; }
+
+  /* 4 · What I learned */
+  .timeline { list-style:none; margin:40px 0 0; padding:0; display:grid; grid-template-columns:repeat(4, 1fr); gap:24px; counter-reset:t; }
+  .timeline li { position:relative; padding-top:34px; border-top:4px solid var(--line); font-size:22px; line-height:1.45; color:var(--muted); }
+  .timeline li::before { counter-increment:t; content:counter(t); position:absolute; top:-22px; left:0; width:40px; height:40px; box-sizing:border-box; border-radius:50%; background:var(--card); border:4px solid var(--line); color:var(--fg); font-weight:700; font-size:18px; display:flex; align-items:center; justify-content:center; }
+  .timeline li.hot { border-top-color:var(--accent); }
+  .timeline li.hot::before { border-color:var(--accent); background:var(--accent); color:#fff; }
+  .timeline .when { display:block; font-size:18px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+  .timeline strong { display:block; color:var(--fg); font-size:24px; margin-bottom:8px; line-height:1.3; }
+  .lesson { margin:auto 0 0; border-left:6px solid var(--accent); background:var(--accent-soft); border-radius:0 12px 12px 0; padding:24px 32px; font-size:26px; line-height:1.4; }
+  .lesson b { display:block; margin-bottom:6px; font-size:18px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+
+  /* 5 · What's next */
+  .next { list-style:none; margin:48px 0 0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:28px 48px; }
+  .next li { border-top:1px solid var(--line); padding-top:24px; }
+  .next strong { display:block; font-size:30px; line-height:1.25; margin-bottom:10px; }
+  .next p { margin:0; font-size:23px; line-height:1.45; color:var(--muted); }
+  .area { display:block; margin-bottom:12px; font-size:16px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); }
+
+  /* Closing */
+  .closing .pad { justify-content:center; }
+  .big-logo { height:64px; width:auto; margin:0 0 40px; align-self:flex-start; }
+  .links { list-style:none; margin:56px 0 0; padding:0; display:grid; grid-template-columns:repeat(3, 1fr); gap:28px; }
+  .links a { display:block; height:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:12px; padding:28px 30px; text-decoration:none; color:var(--fg); transition:border-color .15s ease, background-color .15s ease; }
+  .links a:hover { border-color:var(--accent); background:var(--accent-soft); }
+  .links b { display:block; font-size:28px; font-weight:700; margin-bottom:10px; }
+  .links span { display:block; font-size:20px; line-height:1.4; color:var(--accent); }
+  .links small { display:block; margin-top:12px; font-size:19px; color:var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { .cam, .cursor, .ring { transition:none; } }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+  <section id="for-whom-and-why" data-title="For whom, and why">
+    <div class="pad">
+      <p class="kicker">01 · For whom, and why</p>
+      <h1>What will a ChatGPT Ads click cost my client?</h1>
+      <div class="why-grid">
+        <div class="shift">
+          <div class="row"><div class="label">Today</div><p>A first test budget is a <strong>guess</strong> from other platforms' benchmarks.</p></div>
+          <div class="row after"><div class="label">With the dashboard</div><p><strong>Real CPC and CTR by industry</strong>, from ChatGPT Ads accounts our agency manages.</p></div>
+        </div>
+        <ul class="facts">
+          <li><b>For whom</b>The agency's PPC managers, sizing a client's first ChatGPT Ads budget; admins manage who gets in and which accounts feed it.</li>
+          <li><b>Why now</b>Self-service ChatGPT Ads opened in Hungary on 31 August 2026. No public benchmarks exist yet.</li>
+          <li><b>Honest by design</b>Every account is tagged <span class="tag real">Real</span> or <span class="tag syn">Synthetic</span> stand-in data.</li>
+        </ul>
+      </div>
+      <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>1 / 5</span></footer>
+    </div>
+  </section>
+
+  <section id="the-demo" data-title="The demo">
+    <div class="pad">
+      <p class="kicker">02 · The demo</p>
+      <h2>Compare industries, manage people and accounts</h2>
+      <div class="demo">
+        <div>
+          <div class="frame" id="frame" aria-label="Walkthrough of the dashboard and admin panel">
+            <div class="cam" id="cam">
+              <img class="scene" data-scene="dash-cpc" src="assets/demo/dash-cpc.webp" alt="">
+              <img class="scene" data-scene="dash-drill" src="assets/demo/dash-drill.webp" alt="">
+              <img class="scene" data-scene="users" src="assets/demo/users.webp" alt="">
+              <img class="scene" data-scene="users-edit" src="assets/demo/users-edit.webp" alt="">
+              <img class="scene" data-scene="users-saved" src="assets/demo/users-saved.webp" alt="">
+              <img class="scene" data-scene="ads" src="assets/demo/ads.webp" alt="">
+              <img class="scene" data-scene="ads-filled" src="assets/demo/ads-filled.webp" alt="">
+              <img class="scene" data-scene="ads-added" src="assets/demo/ads-added.webp" alt="">
+              <img class="scene" data-scene="ads-delete" src="assets/demo/ads-delete.webp" alt="">
+              <div class="ring" id="ring"></div>
+              <div class="dialog" id="dialog"><p>Remove this ads account?</p><div class="btns"><span>Cancel</span><span class="ok" id="dialog-ok">OK</span></div></div>
+              <div class="cursor" id="cursor"><span class="arrow" id="arrow"><svg width="30" height="40" viewBox="0 0 30 40" aria-hidden="true"><path d="M2 2 L2 32 L10 24.5 L15.5 37 L21 34.6 L15.6 22.4 L26 22.4 Z" fill="#19095B" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg><span class="ripple"></span></span></div>
+            </div>
+            <video id="rec" src="assets/demo-walkthrough.mp4" preload="metadata" controls playsinline muted></video>
+          </div>
+          <div class="bar" role="toolbar" aria-label="Demo controls">
+            <button type="button" id="b-prev" aria-label="Previous step">◀</button>
+            <button type="button" id="b-next" aria-label="Next step">▶</button>
+            <button type="button" id="b-play" aria-pressed="false">Play</button>
+            <span class="sep"></span>
+            <button type="button" id="b-out" aria-label="Zoom out">−</button>
+            <span class="zoomval" id="zoomval">100%</span>
+            <button type="button" id="b-in" aria-label="Zoom in">+</button>
+            <button type="button" id="b-fit" aria-pressed="false">Whole page</button>
+            <span class="sep" id="rec-sep" hidden></span>
+            <button type="button" id="b-rec" aria-pressed="false" hidden>Recording</button>
+          </div>
+        </div>
+        <div class="panel">
+          <ol class="chapters" id="chapters">
+            <li data-ch="dash">Dashboard</li>
+            <li data-ch="users">User roles</li>
+            <li data-ch="ads">Ads accounts</li>
+          </ol>
+          <div class="stepno" id="stepno">Step 0 / 11</div>
+          <div class="caption" id="caption" aria-live="polite"></div>
+          <p class="hint">Real app screens, rendered by the app's own code: invented figures, @example.com users, stand-ins for real accounts labelled <code>real-account-&lt;n&gt;</code>. No live app needed.<br><br>→ / Space steps through, then moves on.</p>
+        </div>
+      </div>
+      <span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span><span class="fragment demo-step"></span>
+      <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>2 / 5</span></footer>
+    </div>
+  </section>
+
+  <section id="why-it-works" data-title="Why it works">
+    <div class="pad">
+      <p class="kicker">03 · Why it works</p>
+      <h2>I checked the numbers before I trusted them</h2>
+      <div class="checks">
+        <div class="card">
+          <h3>Industry CPC is weighted, not averaged</h3>
+          <table class="mini" aria-label="Two mocked accounts">
+            <thead><tr><th>Mocked account</th><th>Impr.</th><th>Clicks</th><th>Spend</th><th>CPC</th></tr></thead>
+            <tbody>
+              <tr><td>Account A</td><td>100</td><td>10</td><td>500</td><td>50.00</td></tr>
+              <tr><td>Account B</td><td>200</td><td>30</td><td>900</td><td>30.00</td></tr>
+            </tbody>
+          </table>
+          <div class="verdict">
+            <div class="no">Average of the two CPCs<strong>40.00</strong></div>
+            <div class="yes">Total spend ÷ total clicks<strong>35.00</strong></div>
+          </div>
+          <p style="margin-top:16px">Pinned in a unit test that never calls the live API, with CTR the same way (40 ÷ 300 = 13.33%): <code>SegmentAggregationTest</code>.</p>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <h3>When my hand calculation disagreed</h3>
+            <p>I wrote the expected CPC down <strong>before</strong> running the app. The app's result was 2.4% off.</p>
+            <p>I didn't edit the test to pass. I traced it: my "first two weeks" was 15 days, not 14.</p>
+            <div class="rg"><span class="red">Red on the guess</span><span class="green">Green on the fix</span></div>
+          </div>
+          <div class="card">
+            <h3>Guardrails, not trust</h3>
+            <p><strong>183</strong> automated tests pass. The demo export refuses to write any non-demo account, key or email, and a test re-checks the published demo data.</p>
+          </div>
+        </div>
+      </div>
+      <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>3 / 5</span></footer>
+    </div>
+  </section>
+
+  <section id="what-i-learned" data-title="What I learned">
+    <div class="pad">
+      <p class="kicker">04 · What I learned</p>
+      <h2>Deleting a name from a file doesn't delete it from git</h2>
+      <ol class="timeline">
+        <li><span class="when">21 Oct</span><strong>Found client names in my notes</strong>In the planning log and a code comment. Replaced them with anonymised labels.</li>
+        <li><span class="when">Same day</span><strong>The fix leaked them again</strong>My note describing the redaction repeated the names. Redacted that too.</li>
+        <li class="hot"><span class="when">21 Nov</span><strong>History still had them</strong>Rewrote every commit with <code>git filter-repo</code>: names and shorthands → <code>real-account-&lt;n&gt;</code>, in files and commit messages. 60 of 60 commits; every <code>grep -c</code> = 0.</li>
+        <li class="hot"><span class="when">Then</span><strong>GitHub kept old PR refs</strong>A force-push can't touch <code>refs/pull/*</code>. Six PRs (#4–#9) needed a GitHub Support purge.</li>
+      </ol>
+      <p class="lesson"><b>The rule now</b>Check before every commit, verify history with <code>git log --all -p | grep -c</code>, and never repeat a leaked value when describing its fix.</p>
+      <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>4 / 5</span></footer>
+    </div>
+  </section>
+
+  <section id="whats-next" data-title="What's next">
+    <div class="pad">
+      <p class="kicker">05 · What's next</p>
+      <h2>From stand-in data to a tool people use</h2>
+      <ul class="next">
+        <li><span class="area">Data</span><strong>Three real accounts in every industry</strong><p>Then that industry's Synthetic stand-ins can go; new accounts already connect from the admin panel.</p></li>
+        <li><span class="area">Trust</span><strong>Guidance where people decide</strong><p>A short Real vs Synthetic note inside the industry drill-down, where colleagues pick the number to quote.</p></li>
+        <li><span class="area">Reach</span><strong>A monthly per-industry snapshot</strong><p>Real-account CPC and CTR pushed to the PPC team's channel, never a single client's figures.</p></li>
+        <li><span class="area">Scope</span><strong>Conversions, after CPC</strong><p>Out of scope this term; cost per result is what clients ask about next.</p></li>
+      </ul>
+      <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>5 / 5</span></footer>
+    </div>
+  </section>
+
+  <section id="closing" class="closing" data-title="Thank you">
+    <div class="pad">
+      <img class="big-logo logo-light" src="assets/logo.webp" alt="Intren">
+      <img class="big-logo logo-dark" src="assets/logo-dark.webp" alt="Intren">
+      <h1>Thank you. Try it yourself.</h1>
+      <p class="lead">No sign-in needed for the demo: the same dashboard, with invented data.</p>
+      <ul class="links">
+        <li><a href="https://github.com/esst-prog2/chatgpt-ads-by-industry"><b>Repository</b><span>github.com/<wbr>esst-prog2/<wbr>chatgpt-ads-by-industry</span><small>Code, tests, planning log</small></a></li>
+        <li><a href="https://esst-prog2.github.io/chatgpt-ads-by-industry/promo.html"><b>Promo page</b><span>esst-prog2.github.io/<wbr>chatgpt-ads-by-industry/<wbr>promo.html</span><small>30-second video and what it shows</small></a></li>
+        <li><a href="https://esst-prog2.github.io/chatgpt-ads-by-industry/demo/"><b>Interactive demo</b><span>esst-prog2.github.io/<wbr>chatgpt-ads-by-industry/<wbr>demo/</span><small>Click through every industry</small></a></li>
+      </ul>
+      <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>Links</span></footer>
+    </div>
+  </section>
+
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js"></script>
+<script>
+(function () {
+  /* ---------- Demo walkthrough (slide 2) ----------
+     Coordinates are in screenshot pixels (1440 wide), measured by
+     slides/capture tooling from the real pages. cam = [x, y, width] (16:9). */
+  var FRAME_W = 1056, FRAME_H = 594;
+  var STEPS = [
+    { ch: 'dash', scene: 'dash-cpc', cam: [120, 0, 1200], text: 'The dashboard: every industry\'s ChatGPT Ads performance on one page, for any date range.' },
+    { ch: 'dash', scene: 'dash-cpc', cam: [200, 0, 1040], path: [[601, 203]], click: true, ring: [541, 184, 120, 38],
+      text: 'Pick <strong>CPC</strong>: one box per industry, one point per campaign.' },
+    { ch: 'dash', scene: 'dash-cpc', cam: [200, 300, 1040], path: [[315, 855]], click: true, ring: [237, 838, 966, 34],
+      text: 'Open your client\'s industry from the totals table.' },
+    { ch: 'dash', scene: 'dash-drill', cam: [200, 950, 1040], path: [[330, 1283]], ring: [237, 1266, 966, 34],
+      text: 'Every account and campaign, tagged <span class="tag real">Real</span> (<code>real-account-1</code>) or <span class="tag syn">Synthetic</span>.' },
+    { ch: 'users', scene: 'users', cam: [300, 10, 840], path: [[989, 366]], click: true, ring: [337, 341, 766, 52],
+      text: 'Admin panel: give a colleague more access. <strong>Edit</strong> their row.' },
+    { ch: 'users', scene: 'users-edit', cam: [300, 10, 840], path: [[831, 367], [951, 366]], click: true, ring: [337, 341, 766, 52],
+      text: 'Viewer → <strong>Admin</strong>, then <strong>Save</strong>.' },
+    { ch: 'users', scene: 'users-saved', cam: [300, 10, 840], path: [[1060, 470]], ring: [337, 341, 766, 52],
+      text: 'Saved: the role changes at once. Admins defined in config stay protected.' },
+    { ch: 'ads', scene: 'ads', cam: [240, 30, 960], path: [[622, 122]], click: true, ring: [501, 100, 242, 45],
+      text: '<strong>Ads Account Management</strong>: every connected account, anonymised as Account #N.' },
+    { ch: 'ads', scene: 'ads-filled', cam: [240, 430, 960], path: [[502, 806], [759, 806], [1043, 806]], click: true, ring: [337, 786, 766, 40],
+      text: 'Connect a new account: API key, industry, currency, <strong>Add account</strong>. It syncs right away and every night.' },
+    { ch: 'ads', scene: 'ads-added', cam: [240, 250, 960], path: [[1032, 619]], click: true, ring: [337, 594, 766, 52],
+      text: 'Account #6 is in. Its industry and currency stay editable; the key never is.' },
+    { ch: 'ads', scene: 'ads-delete', cam: [240, 250, 960], path: [[1041, 619]], click: true, ring: [337, 594, 766, 52], dialog: true,
+      text: 'Remove it: <strong>Delete</strong>, then confirm.' },
+    { ch: 'ads', scene: 'ads', cam: [240, 250, 960], text: 'Removed: back to five accounts. The dashboard\'s industry data follows.' }
+  ];
+  var LAST = STEPS.length - 1;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var cam = $('cam'), cursor = $('cursor'), arrow = $('arrow'), ring = $('ring'), dialog = $('dialog');
+  var frame = $('frame'), rec = $('rec');
+  var scenes = {}; Array.prototype.forEach.call(document.querySelectorAll('.scene'), function (img) { scenes[img.dataset.scene] = img; });
+  var current = -1, zoom = 1, whole = false, timers = [], playing = null;
+
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+  function camera(step) {
+    var c = whole ? [0, 0, 1440] : step.cam;
+    var w = c[2] / zoom, h = w * FRAME_H / FRAME_W;
+    var cx = c[0] + c[2] / 2, cy = c[1] + (c[2] * FRAME_H / FRAME_W) / 2;
+    var x = cx - w / 2, y = cy - h / 2;
+    var s = FRAME_W / w;
+    cam.style.transform = 'translate(' + (-x * s) + 'px,' + (-y * s) + 'px) scale(' + s + ')';
+    arrow.style.transform = 'scale(' + (1 / s) + ')';
+    $('zoomval').textContent = Math.round(zoom * 100) + '%';
+  }
+
+  function render(i, animate) {
+    i = Math.max(0, Math.min(LAST, i));
+    var step = STEPS[i];
+    clearTimers();
+    current = i;
+    Object.keys(scenes).forEach(function (k) { scenes[k].classList.toggle('on', k === step.scene); });
+    zoom = 1;
+    camera(step);
+    dialog.classList.remove('on');
+    if (step.ring) {
+      ring.style.left = step.ring[0] - 4 + 'px'; ring.style.top = step.ring[1] - 3 + 'px';
+      ring.style.width = step.ring[2] + 8 + 'px'; ring.style.height = step.ring[3] + 6 + 'px';
+    }
+    ring.classList.toggle('on', !!step.ring);
+    $('caption').innerHTML = step.text;
+    $('stepno').textContent = i === 0 ? 'Start' : 'Step ' + i + ' / ' + LAST;
+    Array.prototype.forEach.call($('chapters').children, function (li) { li.classList.toggle('on', li.dataset.ch === step.ch); });
+
+    var path = step.path || [];
+    cursor.classList.toggle('on', path.length > 0);
+    var t = animate ? 500 : 0;
+    path.forEach(function (p, n) {
+      later(function () { cursor.style.left = p[0] + 'px'; cursor.style.top = p[1] + 'px'; }, t);
+      t += animate ? 850 : 0;
+    });
+    if (step.click) later(function () { cursor.classList.remove('click'); void cursor.offsetWidth; cursor.classList.add('click'); }, t);
+    if (step.dialog) {
+      later(function () { dialog.classList.add('on'); }, t + 450);
+      later(function () {
+        var ok = $('dialog-ok');
+        cursor.style.left = dialog.offsetLeft + ok.offsetLeft + ok.offsetWidth / 2 + 'px';
+        cursor.style.top = dialog.offsetTop + ok.offsetTop + ok.offsetHeight / 2 + 'px';
+      }, t + 900);
+      later(function () { cursor.classList.remove('click'); void cursor.offsetWidth; cursor.classList.add('click'); }, t + 1800);
+    }
+  }
+
+  // Fragments drive the steps, so the clicker / arrow keys walk the demo.
+  function stepFromReveal() { return document.querySelectorAll('#the-demo .demo-step.visible').length; }
+  function sync(e) { if (Reveal.getCurrentSlide() && Reveal.getCurrentSlide().id === 'the-demo') render(stepFromReveal(), !e || e.type !== 'slidechanged'); }
+
+  $('b-next').addEventListener('click', function () { if (current < LAST) Reveal.nextFragment(); });
+  $('b-prev').addEventListener('click', function () { if (current > 0) Reveal.prevFragment(); });
+  $('b-in').addEventListener('click', function () { zoom = Math.min(3, zoom * 1.25); camera(STEPS[current]); });
+  $('b-out').addEventListener('click', function () { zoom = Math.max(0.6, zoom / 1.25); camera(STEPS[current]); });
+  $('b-fit').addEventListener('click', function () { whole = !whole; this.setAttribute('aria-pressed', whole); zoom = 1; camera(STEPS[current]); });
+  $('b-play').addEventListener('click', function () {
+    var btn = this;
+    if (playing) { clearInterval(playing); playing = null; btn.setAttribute('aria-pressed', 'false'); btn.textContent = 'Play'; return; }
+    if (current >= LAST) { while (stepFromReveal() > 0) Reveal.prevFragment(); }
+    btn.setAttribute('aria-pressed', 'true'); btn.textContent = 'Pause';
+    playing = setInterval(function () {
+      if (current >= LAST) { clearInterval(playing); playing = null; btn.setAttribute('aria-pressed', 'false'); btn.textContent = 'Play'; return; }
+      Reveal.nextFragment();
+    }, 3200);
+  });
+
+  // Optional screen recording: the button only appears if the file exists.
+  function showRec() { $('b-rec').hidden = false; $('rec-sep').hidden = false; }
+  rec.addEventListener('loadedmetadata', showRec);
+  if (location.protocol.indexOf('http') === 0 && window.fetch) {
+    fetch(rec.getAttribute('src'), { method: 'HEAD' }).then(function (r) { if (r.ok) showRec(); }).catch(function () {});
+  }
+  $('b-rec').addEventListener('click', function () {
+    var on = !frame.classList.contains('video');
+    frame.classList.toggle('video', on); this.setAttribute('aria-pressed', on);
+    if (on) rec.play(); else rec.pause();
+  });
+
+  Reveal.initialize({
+    hash: true,            // #/for-whom-and-why ... from the section ids
+    width: 1600, height: 900, margin: 0.04,
+    center: false,
+    controls: true, progress: true, slideNumber: false,
+    transition: 'fade', backgroundTransition: 'none',
+    keyboard: true, overview: true, touch: true
+  });
+  function setTitle(e) { document.title = e.currentSlide.dataset.title + ' · ChatGPT Ads Industry Dashboard'; }
+  Reveal.on('ready', function (e) { setTitle(e); render(0, false); sync(e); });
+  Reveal.on('slidechanged', function (e) {
+    setTitle(e); sync(e);
+    if (e.currentSlide.id !== 'the-demo') { if (playing) $('b-play').click(); if (!rec.paused) rec.pause(); }
+  });
+  Reveal.on('fragmentshown', sync);
+  Reveal.on('fragmenthidden', sync);
+})();
+</script>
+</body>
+</html>

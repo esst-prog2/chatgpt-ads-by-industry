@@ -1,7 +1,8 @@
 # Publishes the promo page (public/promo.html) to GitHub Pages at
 # https://<owner>.github.io/<repo>/ with its logos, promo video and the static
-# demo dashboard (public/demo/, illustrative data) - nothing else from the
-# repository.
+# demo dashboard (public/demo/, illustrative data) and the presentation
+# (slides/index.html + slides/assets/, served at /slides/) - nothing else
+# from the repository.
 #
 # One-time setup in the repository's GitHub settings:
 #   1. Settings > Pages > Build and deployment > Source: "GitHub Actions".
@@ -22,6 +23,8 @@ on:
       - public/promo-video.mp4
       - public/promo-video-poster.jpg
       - public/demo/**
+      - slides/index.html
+      - slides/assets/**
       - .github/workflows/promo-pages.yml
   workflow_dispatch:
 
@@ -53,6 +56,11 @@ jobs:
           # Static, login-free demo dashboard (illustrative data only; see demo-dashboard/).
           cp -R public/demo _site/demo
           test -s _site/demo/index.html && test -s _site/demo/data.js
+          # 5-minute presentation (reveal.js) and its images, served at /slides/.
+          # slides/capture/ is the screenshot tooling, not part of the site.
+          cp -R slides _site/slides
+          rm -rf _site/slides/capture
+          test -s _site/slides/index.html && test -d _site/slides/assets/demo
           touch _site/.nojekyll
           python3 - <<'PY'
           import os
