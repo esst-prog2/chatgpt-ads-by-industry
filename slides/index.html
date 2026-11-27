@@ -289,14 +289,14 @@
   <section id="what-i-learned" data-title="What I learned">
     <div class="pad">
       <p class="kicker">04 · What I learned</p>
-      <h2>Deleting a name from a file doesn't delete it from git</h2>
+      <h2>Google sign-in needs an address that never changes</h2>
       <ol class="timeline">
-        <li><span class="when">21 Oct</span><strong>Found client names in my notes</strong>In the planning log and a code comment. Replaced them with anonymised labels.</li>
-        <li><span class="when">Same day</span><strong>The fix leaked them again</strong>My note describing the redaction repeated the names. Redacted that too.</li>
-        <li class="hot"><span class="when">21 Nov</span><strong>History still had them</strong>Rewrote every commit with <code>git filter-repo</code>: names and shorthands → <code>real-account-&lt;n&gt;</code>, in files and commit messages. 60 of 60 commits; every <code>grep -c</code> = 0.</li>
-        <li class="hot"><span class="when">Then</span><strong>GitHub kept old PR refs</strong>A force-push can't touch <code>refs/pull/*</code>. Six PRs (#4–#9) needed a GitHub Support purge.</li>
+        <li><span class="when">2 Nov</span><strong>Google refused my LAN address</strong>A raw IP can't be an authorized redirect URI: it "must end with a public top-level domain".</li>
+        <li><span class="when">Tunnel</span><strong>Public, but random</strong>A localtunnel gave a real HTTPS hostname, yet a new one on every restart, so the URI had to be re-registered each time.</li>
+        <li class="hot"><span class="when">The hidden bug</span><strong>Right host, wrong scheme</strong>The tunnel forwards raw TCP with no <code>X-Forwarded-Proto</code>, so the app built <code>http://</code> and Google saw a mismatch. Fix: <code>FORCE_HTTPS_URLS</code>, checked with a spoofed <code>Host</code> header and a test.</li>
+        <li class="hot"><span class="when">14 Nov</span><strong>One fixed subdomain</strong><code>--subdomain &lt;name&gt;</code> gives the same <code>https://&lt;name&gt;.loca.lt</code> every run: one URI, registered once.</li>
       </ol>
-      <p class="lesson"><b>The rule now</b>Check before every commit, verify history with <code>git log --all -p | grep -c</code>, and never repeat a leaked value when describing its fix.</p>
+      <p class="lesson"><b>The rule now</b>OAuth only trusts a pre-registered, exact redirect URI. Make the address deterministic first, then make the app print it exactly: scheme, host and path.</p>
       <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>4 / 5</span></footer>
     </div>
   </section>
@@ -304,12 +304,12 @@
   <section id="whats-next" data-title="What's next">
     <div class="pad">
       <p class="kicker">05 · What's next</p>
-      <h2>From stand-in data to a tool people use</h2>
+      <h2>From one channel to a cross&#8209;platform ad intelligence hub</h2>
       <ul class="next">
-        <li><span class="area">Data</span><strong>Three real accounts in every industry</strong><p>Then that industry's Synthetic stand-ins can go; new accounts already connect from the admin panel.</p></li>
-        <li><span class="area">Trust</span><strong>Guidance where people decide</strong><p>A short Real vs Synthetic note inside the industry drill-down, where colleagues pick the number to quote.</p></li>
-        <li><span class="area">Reach</span><strong>A monthly per-industry snapshot</strong><p>Real-account CPC and CTR pushed to the PPC team's channel, never a single client's figures.</p></li>
-        <li><span class="area">Scope</span><strong>Conversions, after CPC</strong><p>Out of scope this term; cost per result is what clients ask about next.</p></li>
+        <li><span class="area">Sources</span><strong>Google Ads, Meta Ads and LinkedIn Ads beside ChatGPT Ads</strong><p>Each platform's API as one more data source behind the same interface the ChatGPT Ads accounts already use.</p></li>
+        <li><span class="area">Model</span><strong>One schema across every network</strong><p>Impressions, clicks, spend, CTR and CPC per campaign, with the platform as a new dimension and totals still in HUF.</p></li>
+        <li><span class="area">Benchmark</span><strong>The same industry, side by side</strong><p>What a click costs in Education &amp; Careers on ChatGPT vs Google vs Meta vs LinkedIn, so a test budget is a comparison, not a guess.</p></li>
+        <li><span class="area">Trust</span><strong>Same honesty, per platform</strong><p>Real and Synthetic tags and the three-real-accounts rule apply to each network; never a single client's figures.</p></li>
       </ul>
       <footer class="foot" aria-hidden="true"><span><img class="logo-light" src="assets/logo.webp" alt=""><img class="logo-dark" src="assets/logo-dark.webp" alt=""></span><span>ChatGPT Ads Industry Dashboard</span><span>5 / 5</span></footer>
     </div>
